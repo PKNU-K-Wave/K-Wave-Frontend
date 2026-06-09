@@ -16,7 +16,7 @@ const languages: Array<{ code: Language; label: string }> = [
 export function Header({ selectedLanguage, onLanguageChange, onHomeClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pt-3 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <button
           className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-3 text-left text-white shadow-soft sm:h-auto sm:px-4 sm:py-2"
           onClick={onHomeClick}
@@ -47,6 +47,16 @@ export function Header({ selectedLanguage, onLanguageChange, onHomeClick }: Head
               {language.label}
             </button>
           ))}
+        </div>
+      </div>
+      <div className="mx-auto max-w-7xl px-4 pb-3 pt-2 sm:hidden">
+        <div className="flex h-11 items-center rounded-full border border-ink/10 bg-white px-4 shadow-sm">
+          <Search className="h-4 w-4 shrink-0 text-ink/45" />
+          <input
+            className="ml-3 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-ink/40"
+            placeholder="Search K-Wave"
+            type="search"
+          />
         </div>
       </div>
     </header>
