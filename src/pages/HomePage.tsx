@@ -17,17 +17,17 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
   const previewFoods = foods.slice(0, 3);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
         <ContentCard item={featuredVideo} onOpen={onOpen} variant="large" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <button
-            className="flex min-h-72 flex-col justify-between rounded-lg bg-ink p-6 text-left text-white shadow-soft"
+            className="flex min-h-56 flex-col justify-between rounded-lg bg-ink p-5 text-left text-white shadow-soft sm:min-h-72 sm:p-6"
             onClick={() => onSelectCategory('video')}
           >
             <Clapperboard className="h-9 w-9 text-citron" />
             <span>
-              <h1 className="text-4xl font-black leading-tight tracking-normal">K-Video</h1>
+              <h1 className="text-3xl font-black leading-tight tracking-normal sm:text-4xl">K-Video</h1>
               <p className="mt-3 text-sm leading-6 text-white/70">
                 Korean movies and dramas connected through casts, OSTs, and cultural context.
               </p>
@@ -37,7 +37,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
             </span>
           </button>
           <button
-            className="flex min-h-72 flex-col justify-between rounded-lg bg-white p-6 text-left shadow-soft ring-1 ring-ink/5 transition hover:-translate-y-1 hover:ring-sea/30"
+            className="flex min-h-56 flex-col justify-between rounded-lg bg-white p-5 text-left shadow-soft ring-1 ring-ink/5 transition hover:-translate-y-1 hover:ring-sea/30 sm:min-h-72 sm:p-6"
             onClick={() => onSelectCategory('kpop')}
           >
             <Music2 className="h-9 w-9 text-coral" />
@@ -54,7 +54,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
         </div>
       </section>
 
-      <section className="mt-12">
+      <section className="mt-8 sm:mt-12">
         <SectionHeader
           eyebrow="Watch"
           title="K-Video"
@@ -74,7 +74,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
         </div>
       </section>
 
-      <section className="mt-12">
+      <section className="mt-8 sm:mt-12">
         <SectionHeader
           eyebrow="Listen"
           title="K-POP"
@@ -107,7 +107,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
         </div>
       </section>
 
-      <section className="mt-12">
+      <section className="mt-8 sm:mt-12">
         <SectionHeader
           eyebrow="Cook"
           title="K-Food"
@@ -127,7 +127,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
         </div>
       </section>
 
-      <section className="mt-12 rounded-lg bg-white p-6 shadow-soft sm:p-8">
+      <section className="mt-8 rounded-lg bg-white p-5 shadow-soft sm:mt-12 sm:p-8">
         <div className="grid gap-6 md:grid-cols-[0.7fr_1.3fr] md:items-center">
           <div>
             <Music2 className="h-9 w-9 text-coral" />
@@ -191,7 +191,7 @@ function ExploreCard({
 
   return (
     <button
-      className={`flex min-h-72 flex-col justify-between rounded-lg p-6 text-left transition ${
+      className={`flex min-h-56 flex-col justify-between rounded-lg p-5 text-left transition sm:min-h-72 sm:p-6 ${
         isDark
           ? 'bg-ink text-white shadow-soft hover:bg-plum'
           : 'border border-dashed border-sea/40 bg-white text-ink hover:border-sea hover:bg-sea/5'

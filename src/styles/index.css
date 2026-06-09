@@ -20,6 +20,10 @@ body {
     linear-gradient(180deg, #fbfaf7 0%, #f0f5f4 54%, #fbfaf7 100%);
 }
 
+html {
+  scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;

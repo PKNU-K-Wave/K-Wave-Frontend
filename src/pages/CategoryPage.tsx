@@ -39,7 +39,7 @@ export function CategoryPage({ category, onOpen }: CategoryPageProps) {
   const copy = copyByCategory[category];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <SectionHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
       {category === 'kpop' ? (
         <div className="space-y-8">

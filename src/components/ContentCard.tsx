@@ -26,7 +26,7 @@ export function ContentCard({ item, onOpen, variant = 'compact' }: ContentCardPr
       }`}
       onClick={() => onOpen(item)}
     >
-      <div className={`relative overflow-hidden ${isLarge ? 'min-h-72 sm:min-h-96' : 'aspect-[4/5]'}`}>
+      <div className={`relative overflow-hidden ${isLarge ? 'min-h-64 sm:min-h-96' : 'aspect-[16/10] sm:aspect-[4/5]'}`}>
         <img className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={item.imageUrl} alt="" />
         <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-ink shadow">
           <Icon className="h-3.5 w-3.5 text-coral" />
@@ -42,7 +42,7 @@ export function ContentCard({ item, onOpen, variant = 'compact' }: ContentCardPr
             </span>
           ))}
         </div>
-        <h3 className={`${isLarge ? 'text-3xl' : 'text-lg'} font-black leading-tight tracking-normal text-ink`}>
+        <h3 className={`${isLarge ? 'text-2xl sm:text-3xl' : 'text-lg'} font-black leading-tight tracking-normal text-ink`}>
           {item.title}
         </h3>
         <p className="mt-1 text-sm font-semibold text-sea">{item.subtitle}</p>

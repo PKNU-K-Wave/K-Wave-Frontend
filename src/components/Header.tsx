@@ -4,6 +4,7 @@ import type { Language } from '../types/content';
 type HeaderProps = {
   selectedLanguage: Language;
   onLanguageChange: (language: Language) => void;
+  onHomeClick: () => void;
 };
 
 const languages: Array<{ code: Language; label: string }> = [
@@ -12,13 +13,16 @@ const languages: Array<{ code: Language; label: string }> = [
   { code: 'ja', label: 'JA' },
 ];
 
-export function Header({ selectedLanguage, onLanguageChange }: HeaderProps) {
+export function Header({ selectedLanguage, onLanguageChange, onHomeClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <button className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-left text-white shadow-soft">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6 lg:px-8">
+        <button
+          className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-3 text-left text-white shadow-soft sm:h-auto sm:px-4 sm:py-2"
+          onClick={onHomeClick}
+        >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-coral text-sm font-black">K</span>
-          <span className="text-lg font-black tracking-normal">K-Wave</span>
+          <span className="text-base font-black tracking-normal sm:text-lg">K-Wave</span>
         </button>
 
         <div className="hidden flex-1 items-center rounded-full border border-ink/10 bg-white px-4 py-2 md:flex">
@@ -30,12 +34,12 @@ export function Header({ selectedLanguage, onLanguageChange }: HeaderProps) {
           />
         </div>
 
-        <div className="ml-auto flex items-center gap-2 rounded-full border border-ink/10 bg-white p-1">
-          <Globe2 className="ml-2 h-4 w-4 text-ink/50" />
+        <div className="ml-auto flex items-center gap-1 rounded-full border border-ink/10 bg-white p-1 sm:gap-2">
+          <Globe2 className="ml-1 h-4 w-4 text-ink/50 sm:ml-2" />
           {languages.map((language) => (
             <button
               key={language.code}
-              className={`h-8 rounded-full px-3 text-xs font-bold transition ${
+              className={`h-8 rounded-full px-2.5 text-xs font-bold transition sm:px-3 ${
                 selectedLanguage === language.code ? 'bg-sea text-white' : 'text-ink/55 hover:bg-ink/5'
               }`}
               onClick={() => onLanguageChange(language.code)}

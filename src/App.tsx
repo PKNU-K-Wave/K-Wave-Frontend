@@ -38,10 +38,10 @@ function App() {
   }, [selectedItem]);
 
   return (
-    <div className="min-h-screen">
-      <Header selectedLanguage={language} onLanguageChange={setLanguage} />
+    <div className="min-h-screen pb-24 md:pb-0">
+      <Header selectedLanguage={language} onLanguageChange={setLanguage} onHomeClick={() => setView('home')} />
 
-      <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 py-4 sm:px-6 md:flex lg:px-8">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = view === item.view;
@@ -68,6 +68,28 @@ function App() {
       )}
 
       <DetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onOpenRelated={openItem} />
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(20,21,31,0.12)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = view === item.view;
+
+            return (
+              <button
+                key={item.view}
+                className={`flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-black transition ${
+                  isActive ? 'bg-ink text-white' : 'text-ink/55 hover:bg-white hover:text-ink'
+                }`}
+                onClick={() => setView(item.view)}
+              >
+                <Icon className={`h-5 w-5 ${isActive ? 'text-citron' : ''}`} />
+                <span className="max-w-full truncate px-1">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

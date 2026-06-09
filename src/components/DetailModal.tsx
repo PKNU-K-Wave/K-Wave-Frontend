@@ -15,14 +15,17 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-ink/60 px-4 py-6 backdrop-blur-sm sm:py-10"
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-ink/60 px-0 py-0 backdrop-blur-sm sm:px-4 sm:py-10"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-lg bg-paper shadow-soft" onClick={(event) => event.stopPropagation()}>
-        <div className="relative grid min-h-[22rem] md:grid-cols-[0.9fr_1.1fr]">
-          <img className="h-80 w-full object-cover md:h-full" src={item.imageUrl} alt="" />
+      <div
+        className="mx-auto min-h-screen max-w-5xl overflow-hidden bg-paper shadow-soft sm:min-h-0 sm:rounded-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="relative grid min-h-[20rem] md:grid-cols-[0.9fr_1.1fr]">
+          <img className="h-64 w-full object-cover sm:h-80 md:h-full" src={item.imageUrl} alt="" />
           <button
             className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white text-ink shadow transition hover:bg-coral hover:text-white"
             onClick={onClose}
@@ -30,7 +33,7 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
           >
             <X className="h-5 w-5" />
           </button>
-          <div className="flex flex-col justify-end p-6 sm:p-8">
+          <div className="flex flex-col justify-end p-5 sm:p-8">
             <div className="mb-4 flex flex-wrap gap-2">
               {item.tags.map((tag) => (
                 <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-black text-ink/60">
@@ -39,13 +42,13 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
               ))}
             </div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-coral">{item.kind}</p>
-            <h2 className="mt-2 text-4xl font-black leading-tight tracking-normal text-ink sm:text-5xl">{item.title}</h2>
+            <h2 className="mt-2 text-3xl font-black leading-tight tracking-normal text-ink sm:text-5xl">{item.title}</h2>
             <p className="mt-2 text-base font-bold text-sea">{item.subtitle}</p>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-ink/65">{item.description}</p>
           </div>
         </div>
 
-        <div className="grid gap-8 p-6 sm:p-8 md:grid-cols-[1fr_18rem]">
+        <div className="grid gap-6 p-5 sm:gap-8 sm:p-8 md:grid-cols-[1fr_18rem]">
           <main className="min-w-0">
             {item.kind === 'movie' || item.kind === 'drama' ? (
               <VideoDetails item={item} onOpenRelated={onOpenRelated} />
