@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clapperboard, Home, Music2, Soup } from 'lucide-react';
 import { DetailModal } from './components/DetailModal';
 import { Header } from './components/Header';
@@ -23,6 +23,19 @@ function App() {
   const openItem = (item: KWaveContent) => {
     setSelectedItem(item);
   };
+
+  useEffect(() => {
+    if (!selectedItem) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedItem]);
 
   return (
     <div className="min-h-screen">

@@ -1,3 +1,4 @@
+import { Music2, Users } from 'lucide-react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { foods, idols, songs, videos } from '../data/mockContent';
@@ -40,11 +41,66 @@ export function CategoryPage({ category, onOpen }: CategoryPageProps) {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <SectionHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      {category === 'kpop' ? (
+        <div className="space-y-8">
+          <KPopGroup
+            label="Tracks"
+            title="K-POP Songs"
+            description="Album jackets, song titles, artists, and tracks that can later connect to OST or idol data."
+            icon={<Music2 className="h-5 w-5" />}
+            items={songs}
+            onOpen={onOpen}
+          />
+          <KPopGroup
+            label="Artists"
+            title="Idol Groups"
+            description="Profiles focused on members, social links, and challenge videos."
+            icon={<Users className="h-5 w-5" />}
+            items={idols}
+            onOpen={onOpen}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {contentByCategory[category].map((item) => (
+            <ContentCard key={item.id} item={item} onOpen={onOpen} />
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function KPopGroup({
+  label,
+  title,
+  description,
+  icon,
+  items,
+  onOpen,
+}: {
+  label: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  items: KWaveContent[];
+  onOpen: (item: KWaveContent) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-ink/10 bg-white/80 p-5 shadow-soft sm:p-6">
+      <div className="mb-5 flex flex-col gap-3 border-b border-ink/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-coral">{label}</p>
+          <h2 className="mt-1 text-2xl font-black tracking-normal text-ink">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/60">{description}</p>
+        </div>
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink text-white">{icon}</span>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {contentByCategory[category].map((item) => (
+        {items.map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}
       </div>
-    </main>
+    </section>
   );
 }

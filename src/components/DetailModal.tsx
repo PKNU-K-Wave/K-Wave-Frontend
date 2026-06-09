@@ -14,8 +14,13 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-ink/60 px-4 py-6 backdrop-blur-sm sm:py-10">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-lg bg-paper shadow-soft">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-ink/60 px-4 py-6 backdrop-blur-sm sm:py-10"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-lg bg-paper shadow-soft" onClick={(event) => event.stopPropagation()}>
         <div className="relative grid min-h-[22rem] md:grid-cols-[0.9fr_1.1fr]">
           <img className="h-80 w-full object-cover md:h-full" src={item.imageUrl} alt="" />
           <button
@@ -228,6 +233,10 @@ function ExternalButton({ href, label, icon }: { href: string; label: string; ic
       href={href}
       target="_blank"
       rel="noreferrer"
+      onClick={(event) => {
+        event.preventDefault();
+        window.open(href, '_blank', 'noopener,noreferrer');
+      }}
     >
       <Icon className="h-4 w-4" />
       {label}
