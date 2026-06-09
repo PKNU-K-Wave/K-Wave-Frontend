@@ -96,7 +96,7 @@ export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
             onOpen={onOpen}
           />
         </div>
-        <div className="mt-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ExploreCard
             title="Explore K-POP"
             description="Browse songs and idol profiles with clear sections."
