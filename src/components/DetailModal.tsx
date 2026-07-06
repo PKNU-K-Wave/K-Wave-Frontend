@@ -1,14 +1,14 @@
 import { ExternalLink, Instagram, Link2, Music2, Play, Users, X } from 'lucide-react';
-import { getContentById } from '../data/mockContent';
 import type { FoodContent, IdolContent, KWaveContent, SongContent, VideoContent } from '../types/content';
 
 type DetailModalProps = {
   item: KWaveContent | null;
+  allContent: KWaveContent[];
   onClose: () => void;
   onOpenRelated: (item: KWaveContent) => void;
 };
 
-export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) {
+export function DetailModal({ item, allContent, onClose, onOpenRelated }: DetailModalProps) {
   if (!item) {
     return null;
   }
@@ -51,10 +51,10 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
         <div className="grid gap-6 p-5 sm:gap-8 sm:p-8 md:grid-cols-[1fr_18rem]">
           <main className="min-w-0">
             {item.kind === 'movie' || item.kind === 'drama' ? (
-              <VideoDetails item={item} onOpenRelated={onOpenRelated} />
+              <VideoDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} />
             ) : null}
-            {item.kind === 'song' ? <SongDetails item={item} onOpenRelated={onOpenRelated} /> : null}
-            {item.kind === 'idol' ? <IdolDetails item={item} onOpenRelated={onOpenRelated} /> : null}
+            {item.kind === 'song' ? <SongDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} /> : null}
+            {item.kind === 'idol' ? <IdolDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} /> : null}
             {item.kind === 'food' ? <FoodDetails item={item} /> : null}
           </main>
 
@@ -71,7 +71,15 @@ export function DetailModal({ item, onClose, onOpenRelated }: DetailModalProps) 
   );
 }
 
-function VideoDetails({ item, onOpenRelated }: { item: VideoContent; onOpenRelated: (item: KWaveContent) => void }) {
+function VideoDetails({
+  item,
+  allContent,
+  onOpenRelated,
+}: {
+  item: VideoContent;
+  allContent: KWaveContent[];
+  onOpenRelated: (item: KWaveContent) => void;
+}) {
   return (
     <div className="space-y-8">
       <InfoGrid
@@ -82,12 +90,26 @@ function VideoDetails({ item, onOpenRelated }: { item: VideoContent; onOpenRelat
         ]}
       />
       <People title="Cast" people={item.cast} />
-      <RelatedItems title="Connected OST" ids={item.ostIds} icon={<Music2 className="h-4 w-4" />} onOpen={onOpenRelated} />
+      <RelatedItems
+        title="Connected OST"
+        ids={item.ostIds}
+        allContent={allContent}
+        icon={<Music2 className="h-4 w-4" />}
+        onOpen={onOpenRelated}
+      />
     </div>
   );
 }
 
-function SongDetails({ item, onOpenRelated }: { item: SongContent; onOpenRelated: (item: KWaveContent) => void }) {
+function SongDetails({
+  item,
+  allContent,
+  onOpenRelated,
+}: {
+  item: SongContent;
+  allContent: KWaveContent[];
+  onOpenRelated: (item: KWaveContent) => void;
+}) {
   return (
     <div className="space-y-8">
       <InfoGrid
@@ -97,21 +119,41 @@ function SongDetails({ item, onOpenRelated }: { item: SongContent; onOpenRelated
           ['Release', String(item.releaseYear)],
         ]}
       />
-      <RelatedItems title="Related Idol" ids={item.relatedIdolIds} icon={<Users className="h-4 w-4" />} onOpen={onOpenRelated} />
+      <RelatedItems
+        title="Related Idol"
+        ids={item.relatedIdolIds}
+        allContent={allContent}
+        icon={<Users className="h-4 w-4" />}
+        onOpen={onOpenRelated}
+      />
       {item.challengeUrl ? <ExternalButton href={item.challengeUrl} label="Open challenge link" icon="play" /> : null}
     </div>
   );
 }
 
-function IdolDetails({ item, onOpenRelated }: { item: IdolContent; onOpenRelated: (item: KWaveContent) => void }) {
+function IdolDetails({
+  item,
+  allContent,
+  onOpenRelated,
+}: {
+  item: IdolContent;
+  allContent: KWaveContent[];
+  onOpenRelated: (item: KWaveContent) => void;
+}) {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap gap-3">
-        <ExternalButton href={item.instagramUrl} label="Instagram" icon="instagram" />
+        {item.instagramUrl ? <ExternalButton href={item.instagramUrl} label="Instagram" icon="instagram" /> : null}
         {item.challengeUrl ? <ExternalButton href={item.challengeUrl} label="Challenge video" icon="play" /> : null}
       </div>
       <People title="Members" people={item.members} />
-      <RelatedItems title="Popular Songs" ids={item.relatedSongIds} icon={<Music2 className="h-4 w-4" />} onOpen={onOpenRelated} />
+      <RelatedItems
+        title="Popular Songs"
+        ids={item.relatedSongIds}
+        allContent={allContent}
+        icon={<Music2 className="h-4 w-4" />}
+        onOpen={onOpenRelated}
+      />
     </div>
   );
 }
@@ -187,15 +229,17 @@ function People({ title, people }: { title: string; people: Array<{ name: string
 function RelatedItems({
   title,
   ids,
+  allContent,
   icon,
   onOpen,
 }: {
   title: string;
   ids: string[];
+  allContent: KWaveContent[];
   icon: React.ReactNode;
   onOpen: (item: KWaveContent) => void;
 }) {
-  const relatedItems = ids.map(getContentById).filter(Boolean) as KWaveContent[];
+  const relatedItems = ids.map((id) => allContent.find((content) => content.id === id)).filter(Boolean) as KWaveContent[];
 
   return (
     <div>

@@ -1,20 +1,15 @@
 import { Music2, Users } from 'lucide-react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { foods, idols, songs, videos } from '../data/mockContent';
 import type { KWaveContent } from '../types/content';
+import type { useKWaveContent } from '../hooks/useKWaveContent';
 
 type Category = 'video' | 'kpop' | 'food';
 
 type CategoryPageProps = {
   category: Category;
+  content: ReturnType<typeof useKWaveContent>;
   onOpen: (item: KWaveContent) => void;
-};
-
-const contentByCategory: Record<Category, KWaveContent[]> = {
-  video: videos,
-  kpop: [...songs, ...idols],
-  food: foods,
 };
 
 const copyByCategory: Record<Category, { eyebrow: string; title: string; description: string }> = {
@@ -35,8 +30,13 @@ const copyByCategory: Record<Category, { eyebrow: string; title: string; descrip
   },
 };
 
-export function CategoryPage({ category, onOpen }: CategoryPageProps) {
+export function CategoryPage({ category, content, onOpen }: CategoryPageProps) {
   const copy = copyByCategory[category];
+  const contentByCategory: Record<Category, KWaveContent[]> = {
+    video: content.videos,
+    kpop: [...content.songs, ...content.idols],
+    food: content.foods,
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
@@ -48,7 +48,7 @@ export function CategoryPage({ category, onOpen }: CategoryPageProps) {
             title="K-POP Songs"
             description="Album jackets, song titles, artists, and tracks that can later connect to OST or idol data."
             icon={<Music2 className="h-5 w-5" />}
-            items={songs}
+            items={content.songs}
             onOpen={onOpen}
           />
           <KPopGroup
@@ -56,7 +56,7 @@ export function CategoryPage({ category, onOpen }: CategoryPageProps) {
             title="Idol Groups"
             description="Profiles focused on members, social links, and challenge videos."
             icon={<Users className="h-5 w-5" />}
-            items={idols}
+            items={content.idols}
             onOpen={onOpen}
           />
         </div>

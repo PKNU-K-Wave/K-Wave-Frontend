@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Clapperboard, Home, Music2, Soup } from 'lucide-react';
 import { DetailModal } from './components/DetailModal';
 import { Header } from './components/Header';
+import { useKWaveContent } from './hooks/useKWaveContent';
 import { CategoryPage } from './pages/CategoryPage';
 import { HomePage } from './pages/HomePage';
 import type { KWaveContent, Language } from './types/content';
@@ -19,6 +20,7 @@ function App() {
   const [view, setView] = useState<View>('home');
   const [language, setLanguage] = useState<Language>('en');
   const [selectedItem, setSelectedItem] = useState<KWaveContent | null>(null);
+  const content = useKWaveContent();
 
   const openItem = (item: KWaveContent) => {
     setSelectedItem(item);
@@ -62,12 +64,17 @@ function App() {
       </nav>
 
       {view === 'home' ? (
-        <HomePage onOpen={openItem} onSelectCategory={setView} />
+        <HomePage content={content} onOpen={openItem} onSelectCategory={setView} />
       ) : (
-        <CategoryPage category={view} onOpen={openItem} />
+        <CategoryPage category={view} content={content} onOpen={openItem} />
       )}
 
-      <DetailModal item={selectedItem} onClose={() => setSelectedItem(null)} onOpenRelated={openItem} />
+      <DetailModal
+        item={selectedItem}
+        allContent={content.allContent}
+        onClose={() => setSelectedItem(null)}
+        onOpenRelated={openItem}
+      />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(20,21,31,0.12)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4 gap-1">

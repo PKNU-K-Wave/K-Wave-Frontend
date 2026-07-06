@@ -1,15 +1,17 @@
 import { ArrowRight, Clapperboard, Music2, Soup, Users } from 'lucide-react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { foods, idols, songs, videos } from '../data/mockContent';
 import type { KWaveContent } from '../types/content';
+import type { useKWaveContent } from '../hooks/useKWaveContent';
 
 type HomePageProps = {
+  content: ReturnType<typeof useKWaveContent>;
   onOpen: (item: KWaveContent) => void;
   onSelectCategory: (category: 'video' | 'kpop' | 'food') => void;
 };
 
-export function HomePage({ onOpen, onSelectCategory }: HomePageProps) {
+export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
+  const { foods, idols, songs, videos } = content;
   const featuredVideo = videos[0];
   const previewVideos = videos.slice(0, 3);
   const previewSongs = songs.slice(0, 3);
