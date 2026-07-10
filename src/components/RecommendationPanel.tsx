@@ -5,6 +5,7 @@ import { useRecommendationPreference } from '../hooks/useRecommendationPreferenc
 import {
   calculateRecommendations,
   defaultPreference,
+  getAvailableTags,
   getCategoryKinds,
   preferenceOptions,
   type RecommendationPreference,
@@ -17,11 +18,20 @@ type RecommendationPanelProps = {
 
 export function RecommendationPanel({ content, onOpen }: RecommendationPanelProps) {
   const [preference, setPreference] = useRecommendationPreference();
+  const availableTags = getAvailableTags(preference.categories);
   const recommendations = calculateRecommendations(content, preference, 4);
 
   const toggleCategory = (categoryValue: string) => {
     const kinds = getCategoryKinds(categoryValue);
-    setPreference((current) => toggleKinds(current, kinds));
+    setPreference((current) => {
+      const nextPreference = toggleKinds(current, kinds);
+      const nextAvailableTags = getAvailableTags(nextPreference.categories);
+
+      return {
+        ...nextPreference,
+        tags: nextPreference.tags.filter((tag) => nextAvailableTags.includes(tag)),
+      };
+    });
   };
 
   const toggleTag = (tag: string) => {
@@ -68,27 +78,42 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
           </PreferenceGroup>
 
           <PreferenceGroup title="Taste">
-            {preferenceOptions.tags.map((tag) => (
-              <Chip key={tag} isActive={preference.tags.includes(tag)} onClick={() => toggleTag(tag)}>
-                {tag}
-              </Chip>
-            ))}
+            {availableTags.length > 0 ? (
+              availableTags.map((tag) => (
+                <Chip key={tag} isActive={preference.tags.includes(tag)} onClick={() => toggleTag(tag)}>
+                  {tag}
+                </Chip>
+              ))
+            ) : (
+              <p className="rounded-lg bg-ink/5 p-3 text-xs font-semibold leading-5 text-ink/50">
+                Select a category first.
+              </p>
+            )}
           </PreferenceGroup>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {recommendations.map((recommendation) => (
-            <div key={recommendation.item.id} className="min-w-0">
-              <ContentCard item={recommendation.item} onOpen={onOpen} />
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {recommendation.reasons.map((reason) => (
-                  <span key={reason} className="rounded-full bg-sea/10 px-2.5 py-1 text-[11px] font-black text-sea">
-                    {reason}
-                  </span>
-                ))}
+          {recommendations.length > 0 ? (
+            recommendations.map((recommendation) => (
+              <div key={recommendation.item.id} className="min-w-0">
+                <ContentCard item={recommendation.item} onOpen={onOpen} />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {recommendation.reasons.map((reason) => (
+                    <span key={reason} className="rounded-full bg-sea/10 px-2.5 py-1 text-[11px] font-black text-sea">
+                      {reason}
+                    </span>
+                  ))}
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-ink/15 bg-ink/5 p-5 sm:col-span-2 xl:col-span-4">
+              <p className="text-sm font-black text-ink">No picks yet</p>
+              <p className="mt-2 text-sm leading-6 text-ink/55">
+                Choose a category and taste tags to build your recommendation list.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </section>

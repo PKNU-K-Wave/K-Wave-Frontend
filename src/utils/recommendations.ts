@@ -23,12 +23,16 @@ export const preferenceOptions = {
     { label: 'K-POP', value: 'kpop', kinds: kindGroup.kpop },
     { label: 'K-Food', value: 'food', kinds: kindGroup.food },
   ],
-  tags: ['Romance', 'Thriller', 'OST', 'Dance', 'Girl Group', 'Home Food', 'Quick', 'One Pan', 'Award-winning'],
+  tagsByCategory: {
+    video: ['Romance', 'Thriller', 'OST', 'Award-winning'],
+    kpop: ['OST', 'Dance', 'Girl Group'],
+    food: ['Home Food', 'Quick', 'One Pan'],
+  },
 };
 
 export const defaultPreference: RecommendationPreference = {
-  categories: ['movie', 'drama', 'song', 'idol'],
-  tags: ['OST', 'Dance'],
+  categories: [],
+  tags: [],
 };
 
 export function calculateRecommendations(
@@ -49,6 +53,16 @@ export function getCategoryKinds(categoryValue: string): ContentKind[] {
   }
 
   return [];
+}
+
+export function getAvailableTags(categories: ContentKind[]): string[] {
+  const selectedCategoryValues = preferenceOptions.categories
+    .filter((category) => category.kinds.some((kind) => categories.includes(kind)))
+    .map((category) => category.value as keyof typeof preferenceOptions.tagsByCategory);
+
+  return [
+    ...new Set(selectedCategoryValues.flatMap((categoryValue) => preferenceOptions.tagsByCategory[categoryValue])),
+  ];
 }
 
 function scoreContent(item: KWaveContent, preference: RecommendationPreference): RecommendedContent {
