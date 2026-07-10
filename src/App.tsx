@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Clapperboard, Home, Music2, Soup } from 'lucide-react';
+import { Clapperboard, Home, Music2, Soup, Sparkles, type LucideIcon } from 'lucide-react';
 import { DetailModal } from './components/DetailModal';
 import { Header } from './components/Header';
 import { useKWaveContent } from './hooks/useKWaveContent';
 import { CategoryPage } from './pages/CategoryPage';
 import { HomePage } from './pages/HomePage';
+import { RecommendationsPage } from './pages/RecommendationsPage';
 import type { KWaveContent, Language } from './types/content';
 
-type View = 'home' | 'video' | 'kpop' | 'food';
+type CategoryView = 'video' | 'kpop' | 'food';
+type View = 'home' | CategoryView | 'recommendations';
 
-const navItems: Array<{ view: View; label: string; icon: typeof Home }> = [
+const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: 'home', label: 'Home', icon: Home },
   { view: 'video', label: 'K-Video', icon: Clapperboard },
   { view: 'kpop', label: 'K-POP', icon: Music2 },
   { view: 'food', label: 'K-Food', icon: Soup },
+  { view: 'recommendations', label: 'For You', icon: Sparkles },
 ];
 
 function App() {
@@ -23,6 +26,11 @@ function App() {
   const content = useKWaveContent();
 
   const openItem = (item: KWaveContent) => {
+    setSelectedItem(item);
+  };
+
+  const openRecommendedItem = (item: KWaveContent) => {
+    setView(getCategoryView(item));
     setSelectedItem(item);
   };
 
@@ -65,6 +73,8 @@ function App() {
 
       {view === 'home' ? (
         <HomePage content={content} onOpen={openItem} onSelectCategory={setView} />
+      ) : view === 'recommendations' ? (
+        <RecommendationsPage content={content} onOpenRecommendation={openRecommendedItem} />
       ) : (
         <CategoryPage category={view} content={content} onOpen={openItem} />
       )}
@@ -77,7 +87,7 @@ function App() {
       />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(20,21,31,0.12)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = view === item.view;
@@ -102,3 +112,15 @@ function App() {
 }
 
 export default App;
+
+function getCategoryView(item: KWaveContent): CategoryView {
+  if (item.kind === 'movie' || item.kind === 'drama') {
+    return 'video';
+  }
+
+  if (item.kind === 'song' || item.kind === 'idol') {
+    return 'kpop';
+  }
+
+  return 'food';
+}

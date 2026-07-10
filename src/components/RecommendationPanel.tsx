@@ -32,7 +32,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
   };
 
   return (
-    <section className="mt-8 rounded-lg bg-white p-5 shadow-soft sm:mt-12 sm:p-6">
+    <section className="rounded-lg bg-white p-5 shadow-soft sm:p-6">
       <div className="flex flex-col gap-4 border-b border-ink/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-coral">

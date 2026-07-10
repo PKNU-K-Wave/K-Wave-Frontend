@@ -1,6 +1,5 @@
 import { ArrowRight, Clapperboard, Music2, Soup, Users } from 'lucide-react';
 import { ContentCard } from '../components/ContentCard';
-import { RecommendationPanel } from '../components/RecommendationPanel';
 import { SectionHeader } from '../components/SectionHeader';
 import type { KWaveContent } from '../types/content';
 import type { useKWaveContent } from '../hooks/useKWaveContent';
@@ -56,8 +55,6 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
           </button>
         </div>
       </section>
-
-      <RecommendationPanel content={content.allContent} onOpen={onOpen} />
 
       <section className="mt-8 sm:mt-12">
         <SectionHeader

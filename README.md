@@ -31,4 +31,4 @@ The frontend currently fetches K-POP artist, member, and song data from the back
 
 ## Recommendation Prototype
 
-The home page includes a frontend recommendation prototype. It scores available content by selected category and taste tags, stores preferences in local storage, and can later be replaced by a backend recommendation API without changing the main UI flow.
+The `For You` page includes a frontend recommendation prototype. It scores available content by selected category and taste tags, stores preferences in local storage, and can later be replaced by a backend recommendation API without changing the main UI flow.
