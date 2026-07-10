@@ -1,4 +1,4 @@
-import { ExternalLink, Instagram, Link2, Music2, Play, Users, X } from 'lucide-react';
+import { ExternalLink, Instagram, Link2, Music2, Play, Quote, Users, X } from 'lucide-react';
 import type { FoodContent, IdolContent, KWaveContent, SongContent, VideoContent } from '../types/content';
 
 type DetailModalProps = {
@@ -90,6 +90,21 @@ function VideoDetails({
         ]}
       />
       <People title="Cast" people={item.cast} />
+      {item.famousLines && item.famousLines.length > 0 ? (
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-black text-ink">
+            <Quote className="h-5 w-5 text-coral" />
+            Famous Lines
+          </h3>
+          <div className="mt-4 space-y-3">
+            {item.famousLines.map((line) => (
+              <blockquote key={line} className="rounded-lg bg-white p-4 text-sm font-semibold leading-7 text-ink/70">
+                {line}
+              </blockquote>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <RelatedItems
         title="Connected OST"
         ids={item.ostIds}
@@ -200,7 +215,7 @@ function InfoGrid({ items }: { items: Array<[string, string]> }) {
       {items.map(([label, value]) => (
         <div key={label} className="rounded-lg bg-white p-4">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/40">{label}</p>
-          <p className="mt-2 text-sm font-bold text-ink">{value}</p>
+          <p className="mt-2 text-sm font-bold text-ink">{value || 'Not available'}</p>
         </div>
       ))}
     </div>
@@ -211,17 +226,21 @@ function People({ title, people }: { title: string; people: Array<{ name: string
   return (
     <div>
       <h3 className="text-lg font-black text-ink">{title}</h3>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {people.map((person) => (
-          <div key={person.name} className="flex items-center gap-3 rounded-lg bg-white p-3">
-            <img className="h-16 w-16 rounded-lg object-cover" src={person.imageUrl} alt="" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black text-ink">{person.name}</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-ink/55">{person.role}</p>
+      {people.length > 0 ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {people.map((person) => (
+            <div key={person.name} className="flex items-center gap-3 rounded-lg bg-white p-3">
+              <img className="h-16 w-16 rounded-lg object-cover" src={person.imageUrl} alt="" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-ink">{person.name}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-ink/55">{person.role}</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg bg-white p-4 text-sm text-ink/55">No cast information is available yet.</p>
+      )}
     </div>
   );
 }
@@ -265,7 +284,7 @@ function RelatedItems({
           ))}
         </div>
       ) : (
-        <p className="mt-3 rounded-lg bg-white p-4 text-sm text-ink/55">No connected item in the mock data yet.</p>
+        <p className="mt-3 rounded-lg bg-white p-4 text-sm text-ink/55">No connected item is available yet.</p>
       )}
     </div>
   );

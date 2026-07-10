@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchKPopContent, mergeContentWithKPop } from '../api/backend';
-import { allContent, foods, idols as mockIdols, songs as mockSongs, videos } from '../data/mockContent';
-import type { IdolContent, KWaveContent, SongContent } from '../types/content';
+import { fetchKPopContent, fetchVideoContent, resolveVideoRelations } from '../api/backend';
+import {
+  allContent as mockAllContent,
+  foods,
+  idols as mockIdols,
+  songs as mockSongs,
+  videos as mockVideos,
+} from '../data/mockContent';
+import type { IdolContent, KWaveContent, Language, SongContent, VideoContent } from '../types/content';
 
 type ContentState = {
   allContent: KWaveContent[];
-  videos: typeof videos;
+  videos: VideoContent[];
   songs: SongContent[];
   idols: IdolContent[];
   foods: typeof foods;
@@ -13,54 +19,55 @@ type ContentState = {
   isUsingFallback: boolean;
 };
 
-export function useKWaveContent(): ContentState {
+export function useKWaveContent(language: Language): ContentState {
+  const [videos, setVideos] = useState<VideoContent[]>(mockVideos);
   const [songs, setSongs] = useState<SongContent[]>(mockSongs);
   const [idols, setIdols] = useState<IdolContent[]>(mockIdols);
   const [isLoading, setIsLoading] = useState(true);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
+    setIsLoading(true);
 
-    fetchKPopContent()
-      .then((content) => {
-        if (!isMounted) {
-          return;
-        }
+    Promise.allSettled([
+      fetchVideoContent(language, controller.signal),
+      fetchKPopContent(controller.signal),
+    ]).then(([videoResult, kpopResult]) => {
+      if (controller.signal.aborted) {
+        return;
+      }
 
-        const hasApiContent = content.songs.length > 0 || content.idols.length > 0;
-        if (hasApiContent) {
-          setSongs(content.songs.length > 0 ? content.songs : mockSongs);
-          setIdols(content.idols.length > 0 ? content.idols : mockIdols);
-          setIsUsingFallback(false);
-        } else {
-          setIsUsingFallback(true);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setIsUsingFallback(true);
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
+      const videoContent = videoResult.status === 'fulfilled' ? videoResult.value : null;
+      const kpopContent = kpopResult.status === 'fulfilled' ? kpopResult.value : null;
+      const hasVideos = Boolean(videoContent?.length);
+      const hasKPop = Boolean(kpopContent && (kpopContent.songs.length > 0 || kpopContent.idols.length > 0));
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      setVideos(videoContent?.length ? videoContent : mockVideos);
+      setSongs(kpopContent?.songs.length ? kpopContent.songs : mockSongs);
+      setIdols(kpopContent?.idols.length ? kpopContent.idols : mockIdols);
+      setIsUsingFallback(!hasVideos || !hasKPop);
+      setIsLoading(false);
+    });
 
-  const currentAllContent = useMemo(
-    () => mergeContentWithKPop(allContent, { songs, idols }),
-    [songs, idols],
+    return () => controller.abort();
+  }, [language]);
+
+  const currentAllContent = useMemo(() => {
+    const mergedContent: KWaveContent[] = [...videos, ...songs, ...idols, ...foods];
+    return mergedContent.map((item) =>
+      item.kind === 'movie' || item.kind === 'drama' ? resolveVideoRelations(item, mergedContent) : item,
+    );
+  }, [videos, songs, idols]);
+
+  const resolvedVideos = useMemo(
+    () => currentAllContent.filter((item): item is VideoContent => item.kind === 'movie' || item.kind === 'drama'),
+    [currentAllContent],
   );
 
   return {
-    allContent: currentAllContent,
-    videos,
+    allContent: currentAllContent.length > 0 ? currentAllContent : mockAllContent,
+    videos: resolvedVideos,
     songs,
     idols,
     foods,

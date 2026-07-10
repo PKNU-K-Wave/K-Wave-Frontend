@@ -136,8 +136,8 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
             <h2 className="mt-4 text-3xl font-black tracking-normal text-ink">Culture is connected.</h2>
           </div>
           <p className="text-sm leading-7 text-ink/65">
-            The first version uses mock relationships. Once backend ERD and DTOs are finalized, these cards can be wired to
-            real relationship data such as video OSTs, idol songs, artists, and food culture tags.
+            Follow a movie or drama into its OST, then continue into songs and artist profiles without losing the thread.
+            K-Wave turns separate culture categories into one connected discovery path.
           </p>
         </div>
       </section>

@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Sparkles } from 'lucide-react';
+import { fetchRecommendations, type RecommendationApiResponse } from '../api/backend';
 import { ContentCard } from './ContentCard';
 import type { ContentKind, KWaveContent } from '../types/content';
 import { useRecommendationPreference } from '../hooks/useRecommendationPreference';
@@ -8,6 +10,7 @@ import {
   getAvailableTags,
   getCategoryKinds,
   preferenceOptions,
+  type RecommendedContent,
   type RecommendationPreference,
 } from '../utils/recommendations';
 
@@ -19,7 +22,44 @@ type RecommendationPanelProps = {
 export function RecommendationPanel({ content, onOpen }: RecommendationPanelProps) {
   const [preference, setPreference] = useRecommendationPreference();
   const availableTags = getAvailableTags(preference.categories);
-  const recommendations = calculateRecommendations(content, preference, 4);
+  const localRecommendations = useMemo(
+    () => calculateRecommendations(content, preference, 4),
+    [content, preference],
+  );
+  const [serverRecommendations, setServerRecommendations] = useState<RecommendedContent[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const recommendations = serverRecommendations ?? localRecommendations;
+
+  useEffect(() => {
+    if (preference.categories.length === 0) {
+      setServerRecommendations(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoading(true);
+
+    fetchRecommendations(preference, controller.signal)
+      .then((response) => mapRecommendations(response, content))
+      .then((mappedRecommendations) => {
+        if (!controller.signal.aborted) {
+          setServerRecommendations(mappedRecommendations.length > 0 ? mappedRecommendations : null);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setServerRecommendations(null);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [content, preference]);
 
   const toggleCategory = (categoryValue: string) => {
     const kinds = getCategoryKinds(categoryValue);
@@ -92,7 +132,10 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
           </PreferenceGroup>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div
+          className={`grid gap-4 transition sm:grid-cols-2 xl:grid-cols-4 ${isLoading ? 'opacity-70' : ''}`}
+          aria-busy={isLoading}
+        >
           {recommendations.length > 0 ? (
             recommendations.map((recommendation) => (
               <div key={recommendation.item.id} className="min-w-0">
@@ -118,6 +161,30 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
       </div>
     </section>
   );
+}
+
+function mapRecommendations(
+  recommendations: RecommendationApiResponse[],
+  content: KWaveContent[],
+): RecommendedContent[] {
+  return recommendations.flatMap((recommendation) => {
+    const item =
+      content.find((candidate) => candidate.id === recommendation.id) ??
+      content.find(
+        (candidate) =>
+          candidate.contentId === recommendation.contentId && candidate.kind === recommendation.contentType,
+      );
+
+    return item
+      ? [
+          {
+            item,
+            score: recommendation.score,
+            reasons: recommendation.reasons,
+          },
+        ]
+      : [];
+  });
 }
 
 function PreferenceGroup({ title, children }: { title: string; children: React.ReactNode }) {

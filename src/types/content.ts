@@ -4,6 +4,8 @@ export type ContentKind = 'movie' | 'drama' | 'song' | 'idol' | 'food';
 
 export type BaseContent = {
   id: string;
+  contentId?: number;
+  relatedContentIds?: number[];
   kind: ContentKind;
   title: string;
   subtitle: string;
@@ -19,6 +21,7 @@ export type VideoContent = BaseContent & {
   cast: Person[];
   ostIds: string[];
   streaming: string[];
+  famousLines?: string[];
 };
 
 export type SongContent = BaseContent & {

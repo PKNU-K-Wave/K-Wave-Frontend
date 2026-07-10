@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Clapperboard, Home, Music2, Soup, Sparkles, type LucideIcon } from 'lucide-react';
+import { fetchVideoDetailContent, resolveVideoRelations } from './api/backend';
 import { DetailModal } from './components/DetailModal';
 import { Header } from './components/Header';
 import { useKWaveContent } from './hooks/useKWaveContent';
@@ -23,15 +24,24 @@ function App() {
   const [view, setView] = useState<View>('home');
   const [language, setLanguage] = useState<Language>('en');
   const [selectedItem, setSelectedItem] = useState<KWaveContent | null>(null);
-  const content = useKWaveContent();
+  const content = useKWaveContent(language);
 
   const openItem = (item: KWaveContent) => {
     setSelectedItem(item);
+
+    if ((item.kind === 'movie' || item.kind === 'drama') && item.contentId) {
+      fetchVideoDetailContent(item.contentId, language)
+        .then((detail) => resolveVideoRelations(detail, content.allContent))
+        .then((detail) => {
+          setSelectedItem((current) => (current?.id === item.id ? detail : current));
+        })
+        .catch(() => undefined);
+    }
   };
 
   const openRecommendedItem = (item: KWaveContent) => {
     setView(getCategoryView(item));
-    setSelectedItem(item);
+    openItem(item);
   };
 
   useEffect(() => {

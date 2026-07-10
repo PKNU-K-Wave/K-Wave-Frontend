@@ -17,7 +17,7 @@ yarn install
 yarn dev
 ```
 
-The app currently uses mock data while backend DTOs and content relationships are still being finalized.
+The app uses backend data when available and keeps mock content as a development fallback.
 
 ## Backend Integration
 
@@ -27,8 +27,8 @@ Create a local `.env` file if the backend is not running on the default URL:
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-The frontend currently fetches K-POP artist, member, and song data from the backend when available. K-Video and K-Food still use mock data until list/detail APIs are ready.
+The frontend fetches K-Video lists and details, K-POP artists, members, and songs from the backend. K-Food remains on mock data until its backend dataset is ready.
 
-## Recommendation Prototype
+## Recommendations
 
-The `For You` page includes a frontend recommendation prototype. It scores available content by selected category and taste tags, stores preferences in local storage, and can later be replaced by a backend recommendation API without changing the main UI flow.
+The `For You` page requests server recommendations using selected categories and taste tags. Preferences remain in local storage, and the frontend scoring logic is used automatically when the backend is unavailable or has no matching data.
