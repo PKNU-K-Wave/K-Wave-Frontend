@@ -1,4 +1,4 @@
-import { ArrowUpRight, Bot, MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, Bot, MessageCircle, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
@@ -34,6 +34,7 @@ const copyByLanguage = {
     context: 'Asking about',
     thinking: 'Searching the K-Wave catalog...',
     error: 'I could not reach the guide. I searched the content currently available on this device instead.',
+    newChat: 'Start a new chat',
     prompts: ['Recommend a drama and its OST', 'Show me K-POP groups', 'What should I watch first?'],
   },
   zh: {
@@ -42,6 +43,7 @@ const copyByLanguage = {
     context: '正在询问',
     thinking: '正在搜索 K-Wave 内容目录...',
     error: '暂时无法连接向导。我改为搜索了此设备上现有的内容。',
+    newChat: '开始新对话',
     prompts: ['推荐一部电视剧和它的 OST', '介绍一些 K-POP 组合', '我应该先看什么？'],
   },
   ja: {
@@ -50,6 +52,7 @@ const copyByLanguage = {
     context: '質問中のコンテンツ',
     thinking: 'K-Waveのカタログを検索中...',
     error: 'ガイドに接続できないため、この端末で利用できるコンテンツを検索しました。',
+    newChat: '新しいチャットを開始',
     prompts: ['ドラマとOSTをおすすめして', 'K-POPグループを紹介して', '最初に何を観ればいい？'],
   },
 } satisfies Record<Language, Record<string, string | string[]>>;
@@ -68,11 +71,14 @@ export function ChatWidget({
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setMessages((current) =>
-      current.length === 1 && current[0].id === 'welcome' ? [welcomeMessage(language)] : current,
-    );
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    setMessages([welcomeMessage(language)]);
+    setInput('');
+    setIsSending(false);
   }, [language]);
 
   useEffect(() => {
@@ -106,11 +112,15 @@ export function ChatWidget({
     setIsSending(true);
 
     const controller = new AbortController();
+    activeControllerRef.current = controller;
     const timeoutId = window.setTimeout(() => controller.abort(), 8000);
     try {
       const response = await sendChatMessage({ message, language, context: contextPayload, history }, controller.signal);
       setMessages((current) => [...current, toAssistantMessage(response)]);
     } catch {
+      if (activeControllerRef.current !== controller) {
+        return;
+      }
       const fallback = buildLocalResponse(message, language, contextItem, allContent);
       setMessages((current) => [
         ...current,
@@ -118,8 +128,20 @@ export function ChatWidget({
       ]);
     } finally {
       window.clearTimeout(timeoutId);
-      setIsSending(false);
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+        setIsSending(false);
+      }
     }
+  };
+
+  const resetConversation = () => {
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    setMessages([welcomeMessage(language)]);
+    setInput('');
+    setIsSending(false);
+    onClearContext();
   };
 
   const openSuggestion = (suggestion: RecommendationApiResponse) => {
@@ -161,6 +183,15 @@ export function ChatWidget({
             <span className="rounded-full bg-ink/5 px-2.5 py-1 text-[11px] font-black uppercase text-ink/55">
               {language}
             </span>
+            <button
+              className="grid h-9 w-9 place-items-center rounded-full text-ink/55 transition hover:bg-ink/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+              onClick={resetConversation}
+              disabled={messages.length === 1 && !contextItem}
+              aria-label={copy.newChat as string}
+              title={copy.newChat as string}
+            >
+              <MessageSquarePlus className="h-5 w-5" />
+            </button>
             <button
               className="grid h-9 w-9 place-items-center rounded-full text-ink/55 transition hover:bg-ink/5 hover:text-ink"
               onClick={() => onOpenChange(false)}
