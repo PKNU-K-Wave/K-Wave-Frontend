@@ -1,4 +1,5 @@
-import { ArrowRight, Clapperboard, Music2, Soup, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clapperboard, Music2, Soup, Users, type LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import type { KWaveContent } from '../types/content';
@@ -12,7 +13,7 @@ type HomePageProps = {
 
 export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
   const { foods, idols, songs, videos } = content;
-  const featuredVideo = videos[0];
+  const featuredItems = [videos[0], songs[0], idols[0], foods[0], videos[1]].filter(isContent);
   const previewVideos = videos.slice(0, 3);
   const previewSongs = songs.slice(0, 3);
   const previewIdols = idols.slice(0, 3);
@@ -20,41 +21,7 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-      <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <ContentCard item={featuredVideo} onOpen={onOpen} variant="large" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-          <button
-            className="flex min-h-56 flex-col justify-between rounded-lg bg-ink p-5 text-left text-white shadow-soft sm:min-h-72 sm:p-6"
-            onClick={() => onSelectCategory('video')}
-          >
-            <Clapperboard className="h-9 w-9 text-citron" />
-            <span>
-              <h1 className="text-3xl font-black leading-tight tracking-normal sm:text-4xl">K-Video</h1>
-              <p className="mt-3 text-sm leading-6 text-white/70">
-                Korean movies and dramas connected through casts, OSTs, and cultural context.
-              </p>
-            </span>
-            <span className="mt-6 inline-flex items-center gap-2 text-sm font-black text-citron">
-              Explore videos <ArrowRight className="h-4 w-4" />
-            </span>
-          </button>
-          <button
-            className="flex min-h-56 flex-col justify-between rounded-lg bg-white p-5 text-left shadow-soft ring-1 ring-ink/5 transition hover:-translate-y-1 hover:ring-sea/30 sm:min-h-72 sm:p-6"
-            onClick={() => onSelectCategory('kpop')}
-          >
-            <Music2 className="h-9 w-9 text-coral" />
-            <span>
-              <h2 className="text-3xl font-black tracking-normal text-ink">K-POP Network</h2>
-              <p className="mt-3 text-sm leading-6 text-ink/60">
-                Songs, idol groups, members, social links, and challenge videos stay clearly connected.
-              </p>
-            </span>
-            <span className="inline-flex items-center gap-2 text-sm font-black text-sea">
-              Explore K-POP <ArrowRight className="h-4 w-4" />
-            </span>
-          </button>
-        </div>
-      </section>
+      <FeaturedCarousel items={featuredItems} onOpen={onOpen} />
 
       <section className="mt-8 sm:mt-12">
         <SectionHeader
@@ -143,6 +110,137 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
       </section>
     </main>
   );
+}
+
+function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (item: KWaveContent) => void }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (items.length < 2 || isPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % items.length);
+    }, 6000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isPaused, items.length]);
+
+  useEffect(() => {
+    if (activeIndex >= items.length) {
+      setActiveIndex(0);
+    }
+  }, [activeIndex, items.length]);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  const activeItem = items[activeIndex];
+  const kind = featuredKind[activeItem.kind];
+  const KindIcon = kind.icon;
+
+  const move = (direction: -1 | 1) => {
+    setActiveIndex((current) => (current + direction + items.length) % items.length);
+  };
+
+  return (
+    <section
+      className="relative h-[23rem] overflow-hidden rounded-lg bg-ink shadow-soft sm:h-[27rem] lg:h-[28rem]"
+      aria-label="Featured K-Wave content"
+      aria-roledescription="carousel"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsPaused(false);
+        }
+      }}
+    >
+      {items.map((item, index) => (
+        <img
+          key={item.id}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            index === activeIndex ? 'opacity-100' : 'opacity-0'
+          }`}
+          src={item.imageUrl}
+          alt=""
+        />
+      ))}
+      <div className="absolute inset-0 bg-ink/45" />
+
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4 sm:p-6">
+        <span className="inline-flex min-w-0 items-center gap-2 text-xs font-black uppercase text-white">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-citron text-ink">
+            <KindIcon className="h-4 w-4" />
+          </span>
+          <span className="truncate">{kind.label}</span>
+        </span>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="mr-1 text-xs font-black tabular-nums text-white/70">
+            {activeIndex + 1} / {items.length}
+          </span>
+          <button
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-white/25"
+            onClick={() => move(-1)}
+            aria-label="Previous featured content"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-white/25"
+            onClick={() => move(1)}
+            aria-label="Next featured content"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 p-5 pb-12 text-white drop-shadow-md sm:p-8 sm:pb-14 lg:max-w-3xl lg:p-10 lg:pb-14">
+        <p className="text-xs font-black uppercase text-citron">K-Wave picks</p>
+        <h1 className="mt-2 text-3xl font-black leading-tight tracking-normal sm:text-4xl">{activeItem.title}</h1>
+        <p className="mt-2 text-sm font-bold text-white/80">{activeItem.subtitle}</p>
+        <p className="mt-3 line-clamp-2 max-w-2xl text-sm leading-6 text-white/70 sm:text-base sm:leading-7">
+          {activeItem.description}
+        </p>
+        <button
+          className="mt-5 inline-flex h-11 items-center gap-2 rounded-lg bg-coral px-4 text-sm font-black text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-coral/30"
+          onClick={() => onOpen(activeItem)}
+        >
+          View details <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2" aria-label="Choose featured content">
+        {items.map((item, index) => (
+          <button
+            key={item.id}
+            className={`h-1.5 rounded-full transition-all ${index === activeIndex ? 'w-8 bg-citron' : 'w-4 bg-white/40 hover:bg-white'}`}
+            onClick={() => setActiveIndex(index)}
+            aria-label={`Show ${item.title}`}
+            aria-current={index === activeIndex ? 'true' : undefined}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const featuredKind: Record<KWaveContent['kind'], { label: string; icon: LucideIcon }> = {
+  movie: { label: 'K-Movie', icon: Clapperboard },
+  drama: { label: 'K-Drama', icon: Clapperboard },
+  song: { label: 'K-POP track', icon: Music2 },
+  idol: { label: 'K-POP artist', icon: Users },
+  food: { label: 'K-Food', icon: Soup },
+};
+
+function isContent(item: KWaveContent | undefined): item is KWaveContent {
+  return Boolean(item);
 }
 
 function PreviewPanel({
