@@ -72,14 +72,15 @@ export function ChatWidget({
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
+  const contextId = contextItem?.id;
 
   useEffect(() => {
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
-    setMessages([welcomeMessage(language)]);
+    setMessages(contextId ? [] : [welcomeMessage(language)]);
     setInput('');
     setIsSending(false);
-  }, [language]);
+  }, [contextId, language]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -138,10 +139,9 @@ export function ChatWidget({
   const resetConversation = () => {
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
-    setMessages([welcomeMessage(language)]);
+    setMessages(contextItem ? [] : [welcomeMessage(language)]);
     setInput('');
     setIsSending(false);
-    onClearContext();
   };
 
   const openSuggestion = (suggestion: RecommendationApiResponse) => {
@@ -186,7 +186,7 @@ export function ChatWidget({
             <button
               className="grid h-9 w-9 place-items-center rounded-full text-ink/55 transition hover:bg-ink/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
               onClick={resetConversation}
-              disabled={messages.length === 1 && !contextItem}
+              disabled={contextItem ? messages.length === 0 : messages.length === 1}
               aria-label={copy.newChat as string}
               title={copy.newChat as string}
             >
@@ -218,7 +218,7 @@ export function ChatWidget({
             {messages.map((message) => (
               <ChatBubble key={message.id} message={message} onOpenSuggestion={openSuggestion} />
             ))}
-            {messages.length === 1 ? (
+            {!contextItem && messages.length === 1 ? (
               <div className="flex flex-wrap gap-2">
                 {(copy.prompts as string[]).map((prompt) => (
                   <button
