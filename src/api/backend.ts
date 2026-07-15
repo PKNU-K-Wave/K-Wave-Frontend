@@ -80,6 +80,31 @@ export type RecommendationApiResponse = {
   reasons: string[];
 };
 
+export type ChatContextPayload = {
+  contentType: string;
+  domainId?: number;
+  contentId?: number;
+  title: string;
+};
+
+export type ChatTurnPayload = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export type ChatApiResponse = {
+  answer: string;
+  suggestions: RecommendationApiResponse[];
+  responseMode: 'llm' | 'catalog';
+};
+
+export type ChatRequestPayload = {
+  message: string;
+  language: Language;
+  context?: ChatContextPayload;
+  history: ChatTurnPayload[];
+};
+
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? DEFAULT_API_BASE_URL;
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -96,6 +121,22 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   }
 
   return body;
+}
+
+async function postRequest<T>(path: string, payload: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const body = (await response.json()) as T | ApiResponse<T>;
+  return isApiResponse<T>(body) ? body.data : body;
 }
 
 async function requestWithFallback<T>(paths: string[], signal?: AbortSignal): Promise<T> {
@@ -182,6 +223,10 @@ export async function fetchRecommendations(
   }
 
   return request<RecommendationApiResponse[]>(`/api/v1/recommendations?${params.toString()}`, signal);
+}
+
+export async function sendChatMessage(payload: ChatRequestPayload, signal?: AbortSignal): Promise<ChatApiResponse> {
+  return postRequest<ChatApiResponse>('/api/v1/chat', payload, signal);
 }
 
 export function resolveVideoRelations(video: VideoContent, allContent: KWaveContent[]): VideoContent {

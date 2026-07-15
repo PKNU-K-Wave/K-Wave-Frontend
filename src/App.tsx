@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Clapperboard, Home, Music2, Soup, Sparkles, type LucideIcon } from 'lucide-react';
 import { fetchVideoDetailContent, resolveVideoRelations } from './api/backend';
 import { DetailModal } from './components/DetailModal';
+import { ChatWidget } from './components/ChatWidget';
 import { Header } from './components/Header';
 import { useKWaveContent } from './hooks/useKWaveContent';
 import { CategoryPage } from './pages/CategoryPage';
@@ -24,6 +25,8 @@ function App() {
   const [view, setView] = useState<View>('home');
   const [language, setLanguage] = useState<Language>('en');
   const [selectedItem, setSelectedItem] = useState<KWaveContent | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatContext, setChatContext] = useState<KWaveContent | null>(null);
   const content = useKWaveContent(language);
 
   const openItem = (item: KWaveContent) => {
@@ -42,6 +45,12 @@ function App() {
   const openRecommendedItem = (item: KWaveContent) => {
     setView(getCategoryView(item));
     openItem(item);
+  };
+
+  const askAboutItem = (item: KWaveContent) => {
+    setSelectedItem(null);
+    setChatContext(item);
+    setIsChatOpen(true);
   };
 
   useEffect(() => {
@@ -94,6 +103,17 @@ function App() {
         allContent={content.allContent}
         onClose={() => setSelectedItem(null)}
         onOpenRelated={openItem}
+        onAsk={askAboutItem}
+      />
+
+      <ChatWidget
+        isOpen={isChatOpen}
+        language={language}
+        contextItem={chatContext}
+        allContent={content.allContent}
+        onOpenChange={setIsChatOpen}
+        onClearContext={() => setChatContext(null)}
+        onOpenContent={openRecommendedItem}
       />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(20,21,31,0.12)] backdrop-blur md:hidden">

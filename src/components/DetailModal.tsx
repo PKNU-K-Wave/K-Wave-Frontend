@@ -1,4 +1,4 @@
-import { ExternalLink, Instagram, Link2, Music2, Play, Quote, Users, X } from 'lucide-react';
+import { ExternalLink, Instagram, Link2, MessageCircle, Music2, Play, Quote, Users, X } from 'lucide-react';
 import type { FoodContent, IdolContent, KWaveContent, SongContent, VideoContent } from '../types/content';
 
 type DetailModalProps = {
@@ -6,9 +6,10 @@ type DetailModalProps = {
   allContent: KWaveContent[];
   onClose: () => void;
   onOpenRelated: (item: KWaveContent) => void;
+  onAsk: (item: KWaveContent) => void;
 };
 
-export function DetailModal({ item, allContent, onClose, onOpenRelated }: DetailModalProps) {
+export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk }: DetailModalProps) {
   if (!item) {
     return null;
   }
@@ -64,6 +65,15 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated }: Detail
               K-Wave treats culture as a network. A drama can lead to an OST, a song can lead to an idol group, and a food
               page can lead to everyday Korean habits.
             </p>
+            {item.kind !== 'food' ? (
+              <button
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-black text-white transition hover:bg-coral"
+                onClick={() => onAsk(item)}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Ask about this
+              </button>
+            ) : null}
           </aside>
         </div>
       </div>
