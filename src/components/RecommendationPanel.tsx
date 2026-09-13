@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Sparkles } from 'lucide-react';
-import { fetchRecommendations, type RecommendationApiResponse } from '../api/backend';
+import { fetchRecommendations, fetchRecommendationTags, recommendationToContent, type RecommendationApiResponse } from '../api/backend';
 import { ContentCard } from './ContentCard';
 import type { ContentKind, KWaveContent } from '../types/content';
 import { useRecommendationPreference } from '../hooks/useRecommendationPreference';
@@ -21,7 +21,23 @@ type RecommendationPanelProps = {
 
 export function RecommendationPanel({ content, onOpen }: RecommendationPanelProps) {
   const [preference, setPreference] = useRecommendationPreference();
-  const availableTags = getAvailableTags(preference.categories);
+  const [serverTags, setServerTags] = useState<string[] | null>(null);
+  const availableTags = serverTags ?? getAvailableTags(preference.categories);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    setServerTags(null);
+    if (preference.categories.some(kind => kind !== 'food')) {
+      fetchRecommendationTags(preference.categories, controller.signal).then(tags => {
+        if (!controller.signal.aborted) {
+          const allowed = preference.categories.includes('food') ? [...new Set([...tags, ...getAvailableTags(['food'])])] : tags;
+          setServerTags(allowed);
+          setPreference(current => current.tags.some(tag => !allowed.includes(tag)) ? { ...current, tags: current.tags.filter(tag => allowed.includes(tag)) } : current);
+        }
+      }).catch(() => undefined);
+    }
+    return () => controller.abort();
+  }, [preference.categories, setPreference]);
   const localRecommendations = useMemo(
     () => calculateRecommendations(content, preference, 4),
     [content, preference],
@@ -39,17 +55,20 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
 
     const controller = new AbortController();
     setIsLoading(true);
+    setServerRecommendations([]);
+    setFailed(false);
 
     fetchRecommendations(preference, controller.signal)
       .then((response) => mapRecommendations(response, content))
       .then((mappedRecommendations) => {
         if (!controller.signal.aborted) {
-          setServerRecommendations(mappedRecommendations.length > 0 ? mappedRecommendations : null);
+          setServerRecommendations([...mappedRecommendations, ...localRecommendations.filter(result => result.item.kind === 'food')].slice(0, 4));
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setServerRecommendations(null);
+          setFailed(true);
         }
       })
       .finally(() => {
@@ -59,7 +78,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
       });
 
     return () => controller.abort();
-  }, [content, preference]);
+  }, [content, preference, localRecommendations]);
 
   const toggleCategory = (categoryValue: string) => {
     const kinds = getCategoryKinds(categoryValue);
@@ -69,7 +88,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
 
       return {
         ...nextPreference,
-        tags: nextPreference.tags.filter((tag) => nextAvailableTags.includes(tag)),
+        tags: nextPreference.tags.filter((tag) => nextAvailableTags.includes(tag) && nextPreference.categories.length > 0),
       };
     });
   };
@@ -118,6 +137,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
           </PreferenceGroup>
 
           <PreferenceGroup title="Taste">
+            {failed && <p role="status" className="text-xs text-ink/60">Recommendations are offline. Showing available titles.</p>}
             {availableTags.length > 0 ? (
               availableTags.map((tag) => (
                 <Chip key={tag} isActive={preference.tags.includes(tag)} onClick={() => toggleTag(tag)}>
@@ -173,7 +193,7 @@ function mapRecommendations(
       content.find(
         (candidate) =>
           candidate.contentId === recommendation.contentId && candidate.kind === recommendation.contentType,
-      );
+      ) ?? recommendationToContent(recommendation);
 
     return item
       ? [

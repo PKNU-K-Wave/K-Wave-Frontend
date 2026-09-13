@@ -105,7 +105,7 @@ export type ChatRequestPayload = {
   history: ChatTurnPayload[];
 };
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? DEFAULT_API_BASE_URL;
+const apiBaseUrl = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, { signal });
@@ -117,6 +117,7 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   const body = (await response.json()) as T | ApiResponse<T>;
 
   if (isApiResponse<T>(body)) {
+    if (!body.success) throw new Error(body.message || 'API request failed');
     return body.data;
   }
 
@@ -136,7 +137,11 @@ async function postRequest<T>(path: string, payload: unknown, signal?: AbortSign
   }
 
   const body = (await response.json()) as T | ApiResponse<T>;
-  return isApiResponse<T>(body) ? body.data : body;
+  if (isApiResponse<T>(body)) {
+    if (!body.success) throw new Error(body.message || 'API request failed');
+    return body.data;
+  }
+  return body;
 }
 
 async function requestWithFallback<T>(paths: string[], signal?: AbortSignal): Promise<T> {
@@ -161,8 +166,78 @@ function isApiResponse<T>(body: T | ApiResponse<T>): body is ApiResponse<T> {
 }
 
 export async function fetchVideoContent(language: Language, signal?: AbortSignal): Promise<VideoContent[]> {
-  const videos = await request<VideoSummaryResponse[]>(`/api/v1/videos?lang=${language}`, signal);
-  return videos.map(mapVideoToContent);
+  const videos = await request<ApiPage<VideoSummaryResponse>>(`/api/v1/videos?lang=${language}&size=50`, signal);
+  return videos.content.map(mapVideoToContent);
+}
+
+export type ApiPage<T> = { content: T[]; number: number; totalPages: number; totalElements: number };
+export type VideoFilters = { type: string; genre: string; sort: string };
+export async function fetchVideoPage(language: Language, filters: VideoFilters, page: number, signal: AbortSignal): Promise<ApiPage<VideoContent>> {
+  const params = new URLSearchParams({ lang: language, page: String(page), size: '12', sort: filters.sort });
+  if (filters.type) params.set('type', filters.type);
+  if (filters.genre) params.set('genre', filters.genre);
+  const response = await request<ApiPage<VideoSummaryResponse>>(`/api/v1/videos?${params}`, signal);
+  return { ...response, content: response.content.map(mapVideoToContent) };
+}
+
+export type ActorProfile = { actorId: number; name: string; profileUrl: string | null; filmographyCount: number };
+export type FilmographyItem = { contentId: number; title: string; posterUrl: string | null; releaseDate: string | null; type: string; characterName: string | null; voteAverage: number | null };
+export async function fetchActor(actorId: number, language: Language, signal: AbortSignal) {
+  const [profile, films] = await Promise.all([
+    request<ActorProfile>(`/api/v1/actors/${actorId}`, signal),
+    request<FilmographyItem[]>(`/api/v1/actors/${actorId}/filmography?lang=${language}`, signal),
+  ]);
+  return { profile, films };
+}
+
+export function fetchRecommendationTags(categories: string[], signal: AbortSignal) {
+  return request<string[]>(`/api/v1/recommendations/tags?${new URLSearchParams({ categories: categories.join(',') })}`, signal);
+}
+
+export function recommendationToContent(result: RecommendationApiResponse): KWaveContent {
+  const base = { id: result.id, contentId: result.contentId, title: result.title, subtitle: result.subtitle, imageUrl: result.imageUrl || FALLBACK_IMAGE_URL, tags: result.tags, description: result.description };
+  if (result.contentType === 'song') return { ...base, kind: 'song', artist: result.subtitle, album: '', releaseYear: 0, relatedIdolIds: [] };
+  if (result.contentType === 'idol') return { ...base, kind: 'idol', instagramUrl: '', members: [], relatedSongIds: [] };
+  return { ...base, kind: result.contentType, year: 0, director: '', cast: [], ostIds: [], streaming: [] };
+}
+
+export function fetchContentDetail(item: KWaveContent, language: Language, signal: AbortSignal): Promise<KWaveContent> {
+  if (item.kind === 'food' || !item.contentId) return Promise.resolve(item);
+  const domainId = Number(item.id.split('-').pop());
+  return fetchSearchDetail({ resultType: item.kind === 'song' ? 'SONG' : item.kind === 'idol' ? 'ARTIST' : 'VIDEO', domainId, contentId: item.contentId, subtype: null, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl }, language, signal);
+}
+export type SearchType = 'VIDEO' | 'SONG' | 'ARTIST';
+export type SearchResult = {
+  resultType: SearchType;
+  subtype: string | null;
+  domainId: number;
+  contentId: number;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string | null;
+};
+
+export function searchContent(q: string, language: Language, type: SearchType | '', page: number, signal: AbortSignal) {
+  const params = new URLSearchParams({ q: q.trim(), lang: language, page: String(page), size: '12' });
+  if (type) params.set('type', type);
+  return request<ApiPage<SearchResult>>(`/api/v1/search?${params}`, signal);
+}
+
+export async function fetchSearchDetail(result: SearchResult, language: Language, signal: AbortSignal): Promise<KWaveContent> {
+  if (result.resultType === 'VIDEO') return fetchVideoDetailContent(result.contentId, language, signal);
+  if (result.resultType === 'ARTIST') {
+    const artist = await request<ArtistResponse>(`/api/v1/artists/${result.domainId}`, signal);
+    const [members, songs] = await Promise.all([
+      artist.isGroup ? request<MemberResponse[]>(`/api/v1/artists/${result.domainId}/members`, signal) : Promise.resolve([]),
+      request<SongResponse[]>(`/api/v1/artists/${result.domainId}/songs`, signal),
+    ]);
+    return mapArtistToIdol(artist, members, songs);
+  }
+  const song = await request<SongResponse>(`/api/v1/songs/${result.domainId}`, signal);
+  const artist = song.artistId
+    ? await request<ArtistResponse>(`/api/v1/artists/${song.artistId}`, signal)
+    : { artistId: 0, name: song.artistName || '', isGroup: false };
+  return mapSongToContent(song, artist);
 }
 
 export async function fetchVideoDetailContent(
@@ -268,6 +343,7 @@ function mapVideoToContent(video: VideoSummaryResponse | VideoDetailResponse): V
 
 function mapActorToPerson(actor: NonNullable<VideoDetailResponse['actors']>[number]): Person {
   return {
+    actorId: actor.actorId,
     name: actor.name,
     role: 'Cast',
     imageUrl: actor.profileUrl || FALLBACK_IMAGE_URL,

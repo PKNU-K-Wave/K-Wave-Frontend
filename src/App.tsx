@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Clapperboard, Home, Music2, Soup, Sparkles, type LucideIcon } from 'lucide-react';
-import { fetchVideoDetailContent, resolveVideoRelations } from './api/backend';
+import { fetchContentDetail, resolveVideoRelations } from './api/backend';
 import { DetailModal } from './components/DetailModal';
 import { ChatWidget } from './components/ChatWidget';
 import { Header } from './components/Header';
@@ -8,10 +8,12 @@ import { useKWaveContent } from './hooks/useKWaveContent';
 import { CategoryPage } from './pages/CategoryPage';
 import { HomePage } from './pages/HomePage';
 import { RecommendationsPage } from './pages/RecommendationsPage';
+import { SearchPage } from './pages/SearchPage';
+import { VideoPage } from './pages/VideoPage';
 import type { KWaveContent, Language } from './types/content';
 
 type CategoryView = 'video' | 'kpop' | 'food';
-type View = 'home' | CategoryView | 'recommendations';
+type View = 'home' | CategoryView | 'recommendations' | 'search';
 
 const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
   { view: 'home', label: 'Home', icon: Home },
@@ -23,24 +25,39 @@ const navItems: Array<{ view: View; label: string; icon: LucideIcon }> = [
 
 function App() {
   const [view, setView] = useState<View>('home');
+  const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [fromSearch, setFromSearch] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
   const [selectedItem, setSelectedItem] = useState<KWaveContent | null>(null);
+  const [detailRequest, setDetailRequest] = useState<KWaveContent | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const [detailRetry, setDetailRetry] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState<KWaveContent | null>(null);
   const content = useKWaveContent(language);
-
-  const openItem = (item: KWaveContent) => {
+  const openSearchItem = useCallback((item: KWaveContent) => {
     setSelectedItem(item);
+    setDetailRequest(item);
+    setView(getCategoryView(item));
+    setFromSearch(true);
+  }, []);
 
-    if ((item.kind === 'movie' || item.kind === 'drama') && item.contentId) {
-      fetchVideoDetailContent(item.contentId, language)
-        .then((detail) => resolveVideoRelations(detail, content.allContent))
-        .then((detail) => {
-          setSelectedItem((current) => (current?.id === item.id ? detail : current));
-        })
-        .catch(() => undefined);
-    }
-  };
+  const openItem = useCallback((item: KWaveContent) => {
+    setSelectedItem(item);
+    setDetailRequest(item);
+  }, []);
+
+  useEffect(() => {
+    if (!detailRequest) return;
+    const controller = new AbortController();
+    setDetailLoading(true); setDetailError(false);
+    fetchContentDetail(detailRequest, language, controller.signal).then(detail => {
+      if (!controller.signal.aborted) setSelectedItem(detail.kind === 'movie' || detail.kind === 'drama' ? resolveVideoRelations(detail, content.allContent) : detail);
+    }).catch(() => { if (!controller.signal.aborted) setDetailError(true); }).finally(() => { if (!controller.signal.aborted) setDetailLoading(false); });
+    return () => controller.abort();
+  }, [detailRequest, language, detailRetry, content.allContent]);
 
   const openRecommendedItem = (item: KWaveContent) => {
     setView(getCategoryView(item));
@@ -49,12 +66,13 @@ function App() {
 
   const askAboutItem = (item: KWaveContent) => {
     setSelectedItem(null);
+    setDetailRequest(null);
     setChatContext(item);
     setIsChatOpen(true);
   };
 
   useEffect(() => {
-    if (!selectedItem) {
+    if (!selectedItem && !isChatOpen) {
       return;
     }
 
@@ -64,11 +82,11 @@ function App() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [selectedItem]);
+  }, [selectedItem, isChatOpen]);
 
   return (
     <div className="min-h-screen pb-24 md:pb-0">
-      <Header selectedLanguage={language} onLanguageChange={setLanguage} onHomeClick={() => setView('home')} />
+      <Header selectedLanguage={language} onLanguageChange={setLanguage} onHomeClick={() => { setView('home'); setFromSearch(false); }} query={query} onQueryChange={setQuery} onSearch={() => { setSubmittedQuery(query.trim()); setView('search'); setFromSearch(false); }} />
 
       <nav className="mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 py-4 sm:px-6 md:flex lg:px-8">
         {navItems.map((item) => {
@@ -90,18 +108,29 @@ function App() {
         })}
       </nav>
 
-      {view === 'home' ? (
+      {fromSearch && view !== 'search' && <div className="mx-auto max-w-7xl px-4"><button className="min-h-11 text-sm font-bold text-sea" onClick={() => { setView('search'); setFromSearch(false); }}>{language === 'ja' ? '検索に戻る' : language === 'zh' ? '返回搜索' : 'Back to search'}</button></div>}
+      <div hidden={view !== 'search'}>
+        <SearchPage key={`${submittedQuery}:${language}`} active={view === 'search'} query={submittedQuery} language={language} onOpen={openSearchItem} />
+      </div>
+      {view === 'search' ? null : view === 'home' ? (
         <HomePage content={content} onOpen={openItem} onSelectCategory={setView} />
       ) : view === 'recommendations' ? (
         <RecommendationsPage content={content} onOpenRecommendation={openRecommendedItem} />
+      ) : view === 'video' ? (
+        <VideoPage language={language} onOpen={openItem} />
       ) : (
         <CategoryPage category={view} content={content} onOpen={openItem} />
       )}
 
       <DetailModal
+        key={selectedItem?.id ?? 'closed'}
+        language={language}
+        loading={detailLoading}
+        error={detailError}
+        onRetry={() => setDetailRetry(detailRetry + 1)}
         item={selectedItem}
         allContent={content.allContent}
-        onClose={() => setSelectedItem(null)}
+        onClose={() => { setSelectedItem(null); setDetailRequest(null); }}
         onOpenRelated={openItem}
         onAsk={askAboutItem}
       />

@@ -1,4 +1,7 @@
 import { ExternalLink, Instagram, Link2, MessageCircle, Music2, Play, Quote, Users, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { ActorPanel } from './ActorPanel';
+import type { Language, Person } from '../types/content';
 import type { FoodContent, IdolContent, KWaveContent, SongContent, VideoContent } from '../types/content';
 
 type DetailModalProps = {
@@ -7,9 +10,18 @@ type DetailModalProps = {
   onClose: () => void;
   onOpenRelated: (item: KWaveContent) => void;
   onAsk: (item: KWaveContent) => void;
+  language: Language;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 };
 
-export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk }: DetailModalProps) {
+export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk, language, loading, error, onRetry }: DetailModalProps) {
+  const [actorId, setActorId] = useState<number | null>(null);
+  const openActorTitle = useCallback((next: KWaveContent) => {
+    setActorId(null);
+    onOpenRelated(next);
+  }, [onOpenRelated]);
   if (!item) {
     return null;
   }
@@ -25,6 +37,7 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk }:
         className="mx-auto min-h-screen max-w-5xl overflow-hidden bg-paper shadow-soft sm:min-h-0 sm:rounded-lg"
         onClick={(event) => event.stopPropagation()}
       >
+        {actorId !== null ? <ActorPanel actorId={actorId} language={language} onBack={() => setActorId(null)} onOpen={openActorTitle} /> : <>
         <div className="relative grid min-h-[20rem] md:grid-cols-[0.9fr_1.1fr]">
           <img className="h-64 w-full object-cover sm:h-80 md:h-full" src={item.imageUrl} alt="" />
           <button
@@ -49,10 +62,12 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk }:
           </div>
         </div>
 
+        {loading && <p role="status" className="px-5 py-3">Loading details...</p>}
+        {error && <p role="alert" className="px-5 py-3">Could not load details. <button onClick={onRetry} className="min-h-11 underline">Try again</button></p>}
         <div className="grid gap-6 p-5 sm:gap-8 sm:p-8 md:grid-cols-[1fr_18rem]">
           <main className="min-w-0">
             {item.kind === 'movie' || item.kind === 'drama' ? (
-              <VideoDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} />
+              <VideoDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} onActor={setActorId} />
             ) : null}
             {item.kind === 'song' ? <SongDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} /> : null}
             {item.kind === 'idol' ? <IdolDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} /> : null}
@@ -76,6 +91,7 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk }:
             ) : null}
           </aside>
         </div>
+        </>}
       </div>
     </div>
   );
@@ -85,10 +101,12 @@ function VideoDetails({
   item,
   allContent,
   onOpenRelated,
+  onActor,
 }: {
   item: VideoContent;
   allContent: KWaveContent[];
   onOpenRelated: (item: KWaveContent) => void;
+  onActor: (actorId: number) => void;
 }) {
   return (
     <div className="space-y-8">
@@ -99,7 +117,7 @@ function VideoDetails({
           ['Streaming', item.streaming.join(', ')],
         ]}
       />
-      <People title="Cast" people={item.cast} />
+      <People title="Cast" people={item.cast} onActor={onActor} />
       {item.famousLines && item.famousLines.length > 0 ? (
         <div>
           <h3 className="flex items-center gap-2 text-lg font-black text-ink">
@@ -232,7 +250,7 @@ function InfoGrid({ items }: { items: Array<[string, string]> }) {
   );
 }
 
-function People({ title, people }: { title: string; people: Array<{ name: string; role: string; imageUrl: string }> }) {
+function People({ title, people, onActor }: { title: string; people: Person[]; onActor?: (actorId: number) => void }) {
   return (
     <div>
       <h3 className="text-lg font-black text-ink">{title}</h3>
@@ -242,7 +260,7 @@ function People({ title, people }: { title: string; people: Array<{ name: string
             <div key={person.name} className="flex items-center gap-3 rounded-lg bg-white p-3">
               <img className="h-16 w-16 rounded-lg object-cover" src={person.imageUrl} alt="" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-ink">{person.name}</p>
+                {person.actorId && onActor ? <button className="min-h-11 text-left text-sm font-black text-sea underline" onClick={() => onActor(person.actorId!)}>{person.name}</button> : <p className="truncate text-sm font-black text-ink">{person.name}</p>}
                 <p className="mt-1 text-xs font-semibold leading-5 text-ink/55">{person.role}</p>
               </div>
             </div>

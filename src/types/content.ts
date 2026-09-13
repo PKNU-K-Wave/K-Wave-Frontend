@@ -50,6 +50,7 @@ export type FoodContent = BaseContent & {
 };
 
 export type Person = {
+  actorId?: number;
   name: string;
   role: string;
   imageUrl: string;
