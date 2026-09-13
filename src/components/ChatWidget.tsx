@@ -115,11 +115,8 @@ export function ChatWidget({
       if (activeControllerRef.current !== controller) {
         return;
       }
-      setMessages((current) => [
-        ...current,
-        { id: createId(), role: 'assistant', text: copy.error },
-      ]);
-      setInput(message);
+      const fallback = buildCatalogFallback(message, language, contextItem, allContent);
+      setMessages((current) => [...current, toAssistantMessage(fallback)]);
     } finally {
       window.clearTimeout(timeoutId);
       if (activeControllerRef.current === controller) {
@@ -325,6 +322,32 @@ function resolveSuggestion(suggestion: RecommendationApiResponse, allContent: KW
 
 function matchesType(item: KWaveContent, type: RecommendationApiResponse['contentType']): boolean {
   return item.kind === type || (type === 'idol' && item.kind === 'idol');
+}
+
+function buildCatalogFallback(message: string, language: Language, context: KWaveContent | null, content: KWaveContent[]): ChatApiResponse {
+  const normalized = message.toLocaleLowerCase();
+  const terms = normalized.split(/[^\p{L}\p{N}]+/u).filter(term => term.length >= 2);
+  const wantsVideo = ['movie', 'film', 'drama', '영화', '드라마', '映画', 'ドラマ', '电影', '电视剧'].some(term => normalized.includes(term));
+  const wantsKpop = ['song', 'music', 'idol', 'artist', 'k-pop', 'kpop', '노래', '아이돌', '音楽', 'アイドル', '歌曲', '艺人'].some(term => normalized.includes(term));
+  const ranked = content.filter(item => item.kind !== 'food')
+    .filter(item => !wantsVideo || wantsKpop || item.kind === 'movie' || item.kind === 'drama')
+    .filter(item => !wantsKpop || wantsVideo || item.kind === 'song' || item.kind === 'idol')
+    .map((item, index) => {
+      const haystack = `${item.title} ${item.subtitle} ${item.tags.join(' ')} ${item.description}`.toLocaleLowerCase();
+      return { item, index, score: terms.reduce((score, term) => score + (haystack.includes(term) ? 2 : 0), 0) + (context?.id === item.id ? 20 : 0) };
+    }).sort((a, b) => b.score - a.score || a.index - b.index).slice(0, 3).map(({ item }) => recommendationFromItem(item));
+  const titles = ranked.map(item => item.title).join(', ');
+  const answer = language === 'zh'
+    ? `演示目录中的相关内容：${titles || '没有找到结果'}。连接服务器后可获得基于数据库的详细回答。`
+    : language === 'ja'
+      ? `デモカタログの関連コンテンツ：${titles || '見つかりませんでした'}。サーバー接続後はデータベースに基づく詳しい回答を利用できます。`
+      : `From the demo catalog, try ${titles || 'another title or genre'}. Connect the backend for detailed database-grounded answers.`;
+  return { answer, suggestions: ranked, responseMode: 'catalog' };
+}
+
+function recommendationFromItem(item: KWaveContent): RecommendationApiResponse {
+  const domainId = getNumericId(item.id);
+  return { id: item.id, contentType: item.kind === 'food' ? 'song' : item.kind, domainId, contentId: item.contentId ?? domainId, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl, tags: item.tags, description: item.description, score: 1, reasons: ['Demo catalog'] };
 }
 
 

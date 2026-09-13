@@ -9,7 +9,7 @@ const copy = {
   ja: { title: '検索結果', all: 'すべて', video: '映像', song: '楽曲', artist: 'アーティスト', empty: '結果が見つかりません。', prompt: '作品名やアーティスト名で検索。', error: '検索できませんでした。もう一度お試しください。', detailError: 'コンテンツを開けませんでした。', retry: '再試行', loading: '読み込み中', results: '件', back: '検索に戻る' },
 };
 
-export function SearchPage({ query, language, active, onOpen }: { query: string; language: Language; active: boolean; onOpen: (item: KWaveContent) => void }) {
+export function SearchPage({ query, language, active, fallbackContent, onOpen }: { query: string; language: Language; active: boolean; fallbackContent: KWaveContent[]; onOpen: (item: KWaveContent) => void }) {
   const c = copy[language];
   const [type, setType] = useState<SearchType | ''>('');
   const [page, setPage] = useState(0);
@@ -18,29 +18,41 @@ export function SearchPage({ query, language, active, onOpen }: { query: string;
   const [error, setError] = useState(false);
   const [opening, setOpening] = useState<SearchResult | null>(null);
   const [detailError, setDetailError] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    setData(null); setError(false); setOpening(null); setDetailError(false);
+    setData(null); setError(false); setOpening(null); setDetailError(false); setUsingFallback(false);
     if (query.trim()) searchContent(query, language, type, page, controller.signal)
       .then((result) => { if (!controller.signal.aborted) setData(result); })
-      .catch(() => { if (!controller.signal.aborted) setError(true); });
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        const normalized = query.trim().toLocaleLowerCase();
+        const matches = fallbackContent.filter(item => {
+          const matchesType = !type || (type === 'VIDEO' && ['movie', 'drama'].includes(item.kind)) || (type === 'SONG' && item.kind === 'song') || (type === 'ARTIST' && item.kind === 'idol');
+          return matchesType && `${item.title} ${item.subtitle} ${item.tags.join(' ')} ${item.description}`.toLocaleLowerCase().includes(normalized);
+        });
+        const pageItems = matches.slice(page * 12, page * 12 + 12).map(toFallbackSearchResult);
+        setData({ content: pageItems, number: page, totalPages: Math.ceil(matches.length / 12), totalElements: matches.length });
+        setUsingFallback(true);
+      });
     return () => controller.abort();
-  }, [query, language, type, page, retry]);
+  }, [query, language, type, page, retry, fallbackContent]);
   useEffect(() => {
     if (!active) { setOpening(null); return; }
     if (!opening) return;
     const controller = new AbortController();
     setDetailError(false);
-    fetchSearchDetail(opening, language, controller.signal).then((item) => {
+    const localItem = fallbackContent.find(item => item.id === `${opening.resultType === 'ARTIST' ? 'artist' : opening.resultType === 'SONG' ? 'song' : 'video'}-${opening.domainId}`);
+    (usingFallback && localItem ? Promise.resolve(localItem) : fetchSearchDetail(opening, language, controller.signal)).then((item) => {
       if (!controller.signal.aborted) { setOpening(null); onOpen(item); }
     }).catch(() => { if (!controller.signal.aborted) { setOpening(null); setDetailError(true); } });
     return () => controller.abort();
-  }, [opening, language, active, onOpen]);
+  }, [opening, language, active, onOpen, fallbackContent, usingFallback]);
   const filters: Array<[SearchType | '', string]> = [['', c.all], ['VIDEO', c.video], ['SONG', c.song], ['ARTIST', c.artist]];
   return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
     <h1 className="break-words text-2xl font-black">{c.title}{query && `: ${query}`}</h1>
     <div role="group" aria-label={c.title} className="my-5 flex flex-wrap gap-2">{filters.map(([value, label]) => <button key={value} aria-pressed={type === value} onClick={() => { setType(value); setPage(0); }} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${type === value ? 'bg-ink text-white' : 'bg-white text-ink'}`}>{label}</button>)}</div>
-    <div role="status" className="mb-4 text-sm text-ink/65">{!query ? c.prompt : error ? c.error : !data ? c.loading : `${data.totalElements} ${c.results}`}</div>
+    <div role="status" className="mb-4 text-sm text-ink/65">{!query ? c.prompt : error ? c.error : !data ? c.loading : `${data.totalElements} ${c.results}${usingFallback ? ' · Demo catalog' : ''}`}</div>
     {error && <button className="min-h-11 rounded-lg bg-ink px-4 text-white" onClick={() => setRetry(retry + 1)}>{c.retry}</button>}
     {detailError && <p role="alert" className="mb-4 text-red-700">{c.detailError}</p>}
     {data?.content.length === 0 && <p className="py-12 text-ink/60">{c.empty}</p>}
@@ -50,4 +62,9 @@ export function SearchPage({ query, language, active, onOpen }: { query: string;
     </button>)}</div>
     {data && data.totalPages > 1 && <nav aria-label="Pagination" className="mt-6 flex items-center justify-center gap-4"><button title="Previous page" aria-label="Previous page" disabled={page === 0} onClick={() => setPage(page - 1)} className="grid h-11 w-11 place-items-center rounded-lg bg-white disabled:opacity-30"><ArrowLeft /></button><span>{page + 1} / {data.totalPages}</span><button title="Next page" aria-label="Next page" disabled={page + 1 >= data.totalPages} onClick={() => setPage(page + 1)} className="grid h-11 w-11 place-items-center rounded-lg bg-white disabled:opacity-30"><ArrowRight /></button></nav>}
   </main>;
+}
+
+function toFallbackSearchResult(item: KWaveContent): SearchResult {
+  const domainId = Number(item.id.split('-').pop()) || 0;
+  return { resultType: item.kind === 'idol' ? 'ARTIST' : item.kind === 'song' ? 'SONG' : 'VIDEO', subtype: item.kind === 'movie' || item.kind === 'drama' ? item.kind.toUpperCase() : null, domainId, contentId: item.contentId ?? domainId, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl };
 }

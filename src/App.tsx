@@ -110,7 +110,7 @@ function App() {
 
       {fromSearch && view !== 'search' && <div className="mx-auto max-w-7xl px-4"><button className="min-h-11 text-sm font-bold text-sea" onClick={() => { setView('search'); setFromSearch(false); }}>{language === 'ja' ? '検索に戻る' : language === 'zh' ? '返回搜索' : 'Back to search'}</button></div>}
       <div hidden={view !== 'search'}>
-        <SearchPage key={`${submittedQuery}:${language}`} active={view === 'search'} query={submittedQuery} language={language} onOpen={openSearchItem} />
+        <SearchPage key={`${submittedQuery}:${language}`} active={view === 'search'} query={submittedQuery} language={language} fallbackContent={content.allContent} onOpen={openSearchItem} />
       </div>
       {view === 'search' ? null : view === 'home' ? (
         <HomePage content={content} onOpen={openItem} onSelectCategory={setView} />
