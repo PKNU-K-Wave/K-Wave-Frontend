@@ -25,23 +25,23 @@ export function Header({ selectedLanguage, onLanguageChange, onHomeClick, query,
   </form>;
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 pt-3 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 pt-3 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
         <button
-          className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-3 text-left text-white shadow-soft sm:h-auto sm:px-4 sm:py-2"
+          className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-2 text-left text-white shadow-soft sm:h-auto sm:px-4 sm:py-2"
           onClick={onHomeClick}
         >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-coral text-sm font-black">K</span>
-          <span className="text-base font-black tracking-normal sm:text-lg">K-Wave</span>
+          <span className="text-sm font-black tracking-normal sm:text-lg">K-Wave</span>
         </button>
 
         {!isLoginView && <div className="hidden flex-1 md:flex">{searchInput}</div>}
 
         <div className="ml-auto flex items-center gap-1 rounded-full border border-ink/10 bg-white p-1 sm:gap-2">
-          <Globe2 className="ml-1 h-4 w-4 text-ink/50 sm:ml-2" />
+          <Globe2 className="ml-2 hidden h-4 w-4 text-ink/50 sm:block" />
           {languages.map((language) => (
             <button
               key={language.code}
-              className={`h-8 rounded-full px-2.5 text-xs font-bold transition sm:px-3 ${
+              className={`h-8 rounded-full px-2 text-xs font-bold transition sm:px-3 ${
                 selectedLanguage === language.code ? 'bg-sea text-white' : 'text-ink/55 hover:bg-ink/5'
               }`}
               onClick={() => onLanguageChange(language.code)}

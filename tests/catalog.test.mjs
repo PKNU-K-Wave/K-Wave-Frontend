@@ -10,6 +10,30 @@ async function loadTypescript(file) {
 }
 const api = await loadTypescript('../src/api/backend.ts');
 const recommendations = await loadTypescript('../src/utils/recommendations.ts');
+const chat = await loadTypescript('../src/utils/chatAnswers.ts');
+const citations = await loadTypescript('../src/utils/chatCitations.ts');
+
+test('web citations are clickable safe segments with Unicode offsets', () => {
+  const answer = '😀 Place [1]';
+  const sources = [{ url: 'https://example.org/place', title: 'Tourism', startIndex: 8, endIndex: 11 }];
+  assert.deepEqual(citations.citedAnswerSegments(answer, sources), [{ text: '😀 Place ' }, { text: '[1]', url: sources[0].url, title: 'Tourism' }]);
+  assert.deepEqual(citations.citedAnswerSegments(answer, [{ ...sources[0], url: 'javascript:alert(1)' }]), [{ text: answer }]);
+  assert.deepEqual(citations.citedAnswerSegments(answer, [{ ...sources[0], endIndex: 100 }]), [{ text: answer }]);
+  assert.equal(citations.citedAnswerSegments(answer, [...sources, ...sources]).filter(segment => segment.url).length, 1);
+  assert.deepEqual(citations.citedAnswerSegments('Old server answer'), [{ text: 'Old server answer' }]);
+});
+
+test('location questions explain missing evidence without repeating a title card', () => {
+  const context = { kind: 'movie', title: 'Example' };
+  const response = { answer: 'Open a card', responseMode: 'catalog', suggestions: [{ title: 'Example' }] };
+  for (const [language, question] of [['en', "I want to know about this movie's places"], ['zh', '拍摄地在哪里'], ['ja', 'ロケ地を教えて']]) {
+    const result = chat.clarifyCatalogAnswer(response, question, language, context);
+    assert.notEqual(result.answer, response.answer);
+    assert.deepEqual(result.suggestions, []);
+  }
+  assert.equal(chat.clarifyCatalogAnswer(response, 'Who is the director?', 'en', context), response);
+  assert.equal(chat.clarifyCatalogAnswer({ ...response, responseMode: 'llm' }, 'Where was it filmed?', 'en', context).answer, response.answer);
+});
 
 test('video page preserves server metadata and encodes filters', async () => {
   const original = globalThis.fetch;

@@ -62,7 +62,7 @@ export function CategoryPage({ category, content, onOpen }: CategoryPageProps) {
           />
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {contentByCategory[category].map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
@@ -101,7 +101,7 @@ function KPopGroup({
         </div>
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}

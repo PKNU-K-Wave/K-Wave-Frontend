@@ -39,7 +39,7 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk, l
       >
         {actorId !== null ? <ActorPanel actorId={actorId} language={language} onBack={() => setActorId(null)} onOpen={openActorTitle} /> : <>
         <div className="relative grid min-h-[20rem] md:grid-cols-[0.9fr_1.1fr]">
-          <img className="h-64 w-full object-cover sm:h-80 md:h-full" src={item.imageUrl} alt="" />
+          <div className="flex items-center justify-center bg-ink/5 p-4"><img className="max-h-[65vh] w-full object-contain md:max-h-[36rem]" src={item.imageUrl} alt="" /></div>
           <button
             className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white text-ink shadow transition hover:bg-coral hover:text-white"
             onClick={onClose}

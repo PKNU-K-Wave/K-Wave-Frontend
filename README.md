@@ -44,6 +44,15 @@ Against the shared server, verify Home -> K-Video -> detail -> OST/related video
 K-POP page navigation, and search -> result -> detail. API failure falls back to sample content;
 an empty successful search remains empty. Missing translations and profile images need dataset updates.
 
+## Ask K-Wave
+
+The chat API may return catalog, llm or web response modes. Web responses include
+URL citation annotations, rendered as inline links opening a new tab. General culture
+explanations can use LLM knowledge; locations/current facts require verified search
+sources in the matching backend upgrade. Without a provider key or after provider failure,
+the server reports that verification is unavailable. The frontend never contains API keys.
+Deploy the matching backend chat upgrade before testing real web answers.
+
 ## Recommendations
 
 Guests can browse, search and open details. For You opens the sign-in screen for guests.

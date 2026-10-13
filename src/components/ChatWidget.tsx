@@ -8,14 +8,18 @@ import {
   type ChatContextPayload,
   type ChatTurnPayload,
   type RecommendationApiResponse,
+  type ChatCitation,
 } from '../api/backend';
 import type { KWaveContent, Language } from '../types/content';
+import { clarifyCatalogAnswer } from '../utils/chatAnswers';
+import { citedAnswerSegments } from '../utils/chatCitations';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
   suggestions?: RecommendationApiResponse[];
+  citations?: ChatCitation[];
 };
 
 type ChatWidgetProps = {
@@ -106,7 +110,7 @@ export function ChatWidget({
 
     const controller = new AbortController();
     activeControllerRef.current = controller;
-    const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 65000);
     try {
       const response = await sendChatMessage({ message, language, context: contextPayload, history }, controller.signal);
       if (controller.signal.aborted || activeControllerRef.current !== controller) return;
@@ -116,7 +120,7 @@ export function ChatWidget({
         return;
       }
       const fallback = buildCatalogFallback(message, language, contextItem, allContent);
-      setMessages((current) => [...current, toAssistantMessage(fallback)]);
+      setMessages((current) => [...current, toAssistantMessage(clarifyCatalogAnswer(fallback, message, language, contextItem))]);
     } finally {
       window.clearTimeout(timeoutId);
       if (activeControllerRef.current === controller) {
@@ -263,8 +267,10 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
   const isUser = message.role === 'user';
   return (
     <div className={isUser ? 'ml-10' : 'mr-4'}>
-      <div className={`whitespace-pre-line rounded-lg px-3.5 py-3 text-sm leading-6 ${isUser ? 'bg-ink text-white' : 'bg-white text-ink/70'}`}>
-        {message.text}
+      <div className={`whitespace-pre-line break-words rounded-lg px-3.5 py-3 text-sm leading-6 ${isUser ? 'bg-ink text-white' : 'bg-white text-ink/70'}`}>
+        {citedAnswerSegments(message.text, isUser ? [] : message.citations).map((segment, index) => segment.url
+          ? <a key={index} href={segment.url} target="_blank" rel="noopener noreferrer" title={segment.title} aria-label={`Source: ${segment.title}`} className="font-bold text-sea underline underline-offset-2">{segment.text}</a>
+          : <span key={index}>{segment.text}</span>)}
       </div>
       {message.suggestions && message.suggestions.length > 0 ? (
         <div className="mt-2 space-y-2">
@@ -293,7 +299,7 @@ function welcomeMessage(language: Language): ChatMessage {
 }
 
 function toAssistantMessage(response: ChatApiResponse): ChatMessage {
-  return { id: createId(), role: 'assistant', text: response.answer, suggestions: response.suggestions };
+  return { id: createId(), role: 'assistant', text: response.answer, suggestions: response.suggestions, citations: response.citations };
 }
 
 function toHistory(messages: ChatMessage[]): ChatTurnPayload[] {

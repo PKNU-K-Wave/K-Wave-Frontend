@@ -62,7 +62,7 @@ function VideoFeed({ language, onOpen }: { language: Language; onOpen: (item: KW
       <button onClick={() => setRetry(current => current + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm font-bold text-sea"><RefreshCw className="h-4 w-4" aria-hidden="true" />{copy.retry}</button>
     </div>}
     {meta && <p className="mb-4 text-sm text-ink/60">{meta.totalElements} titles</p>}
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{visibleItems.map(item => <ContentCard key={item.id} item={item} onOpen={onOpen} />)}</div>
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">{visibleItems.map(item => <ContentCard key={item.id} item={item} onOpen={onOpen} />)}</div>
     <div ref={sentinel} className="flex min-h-24 flex-wrap items-center justify-center gap-3" role="status">
       {!showDemo && <>
       {loading ? <><Loader2 className="h-5 w-5 animate-spin" />Loading videos...</> : error ? <><span>Could not load videos.</span><button onClick={() => setRetry(retry + 1)} className="min-h-11 rounded-lg bg-white px-4 font-bold">Try again</button></> : !items.length ? 'No matching videos.' : more ? <button className="min-h-11 rounded-lg bg-white px-4" onClick={() => { if (!pending.current) { pending.current = true; setPage(page + 1); } }}>Load more</button> : 'You have reached the end.'}

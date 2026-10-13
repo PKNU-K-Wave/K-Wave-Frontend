@@ -35,7 +35,7 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
           title="K-Video"
           description="Movies and dramas are grouped together first, then connected to OSTs and music pages when the data relationship exists."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewVideos.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
@@ -88,7 +88,7 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
           title="K-Food"
           description="The food section focuses on casual Korean home meals instead of only globally famous restaurant dishes."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewFoods.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
@@ -169,7 +169,7 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
       {items.map((item, index) => (
         <img
           key={item.id}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+          className={`absolute inset-0 h-full w-full ${item.kind === 'movie' || item.kind === 'drama' ? 'object-contain' : 'object-cover'} transition-opacity duration-700 ${
             index === activeIndex ? 'opacity-100' : 'opacity-0'
           }`}
           src={item.imageUrl}
@@ -271,7 +271,7 @@ function PreviewPanel({
         </div>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {items.map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}

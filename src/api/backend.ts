@@ -97,8 +97,11 @@ export type ChatTurnPayload = {
 export type ChatApiResponse = {
   answer: string;
   suggestions: RecommendationApiResponse[];
-  responseMode: 'llm' | 'catalog';
+  responseMode: 'llm' | 'catalog' | 'web';
+  citations?: ChatCitation[];
 };
+
+export type ChatCitation = { url: string; title: string; startIndex: number; endIndex: number };
 
 export type ChatRequestPayload = {
   message: string;
