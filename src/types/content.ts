@@ -22,6 +22,7 @@ export type VideoContent = BaseContent & {
   ostIds: string[];
   streaming: string[];
   famousLines?: string[];
+  connectedItems?: KWaveContent[];
 };
 
 export type SongContent = BaseContent & {

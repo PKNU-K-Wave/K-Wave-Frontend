@@ -1,7 +1,7 @@
 import type { RecommendationPreference } from '../utils/recommendations';
 import type { IdolContent, KWaveContent, Language, Person, SongContent, VideoContent } from '../types/content';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:8080';
+const DEFAULT_API_BASE_URL = 'http://13.209.94.227';
 const FALLBACK_IMAGE_URL =
   'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80';
 const FALLBACK_SONG_IMAGE_URL =
@@ -55,6 +55,8 @@ type VideoSummaryResponse = {
 };
 
 type VideoDetailResponse = VideoSummaryResponse & {
+  osts?: SongResponse[];
+  relatedContents?: VideoSummaryResponse[];
   actors?: Array<{
     actorId: number;
     name: string;
@@ -142,23 +144,6 @@ async function postRequest<T>(path: string, payload: unknown, signal?: AbortSign
     return body.data;
   }
   return body;
-}
-
-async function requestWithFallback<T>(paths: string[], signal?: AbortSignal): Promise<T> {
-  let lastError: unknown;
-
-  for (const path of paths) {
-    try {
-      return await request<T>(path, signal);
-    } catch (error) {
-      if (signal?.aborted) {
-        throw error;
-      }
-      lastError = error;
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('API request failed');
 }
 
 function isApiResponse<T>(body: T | ApiResponse<T>): body is ApiResponse<T> {
@@ -252,32 +237,14 @@ export async function fetchVideoDetailContent(
 export async function fetchKPopContent(
   signal?: AbortSignal,
 ): Promise<{ idols: IdolContent[]; songs: SongContent[] }> {
-  const artists = await requestWithFallback<ArtistResponse[]>(['/api/v1/artists', '/api/artists'], signal);
-  const artistBundles = await Promise.all(
-    artists.map(async (artist) => {
-      const [members, songs] = await Promise.all([
-        artist.isGroup
-          ? requestWithFallback<MemberResponse[]>(
-              [`/api/v1/artists/${artist.artistId}/members`, `/api/artists/${artist.artistId}/members`],
-              signal,
-            ).catch(() => [])
-          : [],
-        requestWithFallback<SongResponse[]>(
-          [`/api/v1/artists/${artist.artistId}/songs`, `/api/artists/${artist.artistId}/songs`],
-          signal,
-        ).catch(() => []),
-      ]);
-
-      return {
-        idol: mapArtistToIdol(artist, members, songs),
-        songs: songs.map((song) => mapSongToContent(song, artist)),
-      };
-    }),
-  );
-
+  const [artists, songs] = await Promise.all([
+    request<ArtistResponse[]>('/api/v1/artists', signal),
+    request<SongResponse[]>('/api/v1/songs', signal),
+  ]);
+  const artistById = new Map(artists.map(artist => [artist.artistId, artist]));
   return {
-    idols: artistBundles.map((bundle) => bundle.idol),
-    songs: artistBundles.flatMap((bundle) => bundle.songs),
+    idols: artists.map(artist => mapArtistToIdol(artist, [], [])),
+    songs: songs.map(song => mapSongToContent(song, artistById.get(song.artistId ?? 0) ?? { artistId: song.artistId ?? 0, name: song.artistName ?? '', isGroup: false })),
   };
 }
 
@@ -335,7 +302,11 @@ function mapVideoToContent(video: VideoSummaryResponse | VideoDetailResponse): V
     year: toYear(video.releaseDate),
     director: video.director || 'Not available',
     cast: (detail.actors ?? []).map(mapActorToPerson),
-    ostIds: [],
+    ostIds: (detail.osts ?? []).map(song => `song-${song.songId}`),
+    connectedItems: [
+      ...(detail.osts ?? []).map(song => mapSongToContent(song, { artistId: song.artistId ?? 0, name: song.artistName ?? '', isGroup: false })),
+      ...(detail.relatedContents ?? []).map(mapVideoToContent),
+    ],
     streaming: [],
     famousLines: (detail.famousLines ?? []).map((line) => line.lineText),
   };

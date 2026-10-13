@@ -1,4 +1,5 @@
 import { Music2, Users } from 'lucide-react';
+import { useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import type { KWaveContent } from '../types/content';
@@ -86,6 +87,10 @@ function KPopGroup({
   items: KWaveContent[];
   onOpen: (item: KWaveContent) => void;
 }) {
+  const [page, setPage] = useState(0);
+  const pageSize = 24;
+  const totalPages = Math.ceil(items.length / pageSize);
+  const currentPage = Math.min(page, Math.max(0, totalPages - 1));
   return (
     <section className="rounded-lg border border-ink/10 bg-white/80 p-5 shadow-soft sm:p-6">
       <div className="mb-5 flex flex-col gap-3 border-b border-ink/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -97,10 +102,15 @@ function KPopGroup({
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map((item) => (
+        {items.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}
       </div>
+      {totalPages > 1 && <nav aria-label={`${title} pagination`} className="mt-5 flex items-center justify-center gap-4 text-sm">
+        <button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">Previous</button>
+        <span>{currentPage + 1} / {totalPages}</span>
+        <button disabled={currentPage + 1 >= totalPages} onClick={() => setPage(currentPage + 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">Next</button>
+      </nav>}
     </section>
   );
 }

@@ -27,7 +27,7 @@ export function ContentCard({ item, onOpen, variant = 'compact' }: ContentCardPr
       onClick={() => onOpen(item)}
     >
       <div className={`relative overflow-hidden ${isLarge ? 'min-h-64 sm:min-h-96' : 'aspect-[16/10] sm:aspect-[4/5]'}`}>
-        <img className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={item.imageUrl} alt="" />
+        <img loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" src={item.imageUrl} alt="" />
         <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-ink shadow">
           <Icon className="h-3.5 w-3.5 text-coral" />
           {item.kind.toUpperCase()}

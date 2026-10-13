@@ -136,10 +136,11 @@ function VideoDetails({
       <RelatedItems
         title="Connected OST"
         ids={item.ostIds}
-        allContent={allContent}
+        allContent={[...(item.connectedItems ?? []), ...allContent]}
         icon={<Music2 className="h-4 w-4" />}
         onOpen={onOpenRelated}
       />
+      <RelatedItems title="Related videos" ids={(item.connectedItems ?? []).filter(content => content.kind === 'movie' || content.kind === 'drama').map(content => content.id)} allContent={item.connectedItems ?? []} icon={<Link2 className="h-4 w-4" />} onOpen={onOpenRelated} />
     </div>
   );
 }
