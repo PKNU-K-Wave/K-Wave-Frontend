@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Clapperboard, Music2, Soup, Users, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clapperboard, Music2, Soup, Sparkles, Users, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
@@ -9,9 +9,10 @@ type HomePageProps = {
   content: ReturnType<typeof useKWaveContent>;
   onOpen: (item: KWaveContent) => void;
   onSelectCategory: (category: 'video' | 'kpop' | 'food') => void;
+  onLoginClick: () => void;
 };
 
-export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
+export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: HomePageProps) {
   const { foods, idols, songs, videos } = content;
   const featuredItems = [videos[0], songs[0], idols[0], foods[0], videos[1]].filter(isContent);
   const previewVideos = videos.slice(0, 3);
@@ -23,13 +24,18 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <FeaturedCarousel items={featuredItems} onOpen={onOpen} />
 
+      <section className="mt-6 flex flex-col gap-3 border-y border-ink/10 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-center gap-2 text-sm font-semibold text-ink/70"><Sparkles className="h-4 w-4 text-coral" />Save your tastes for personalized K-Wave picks.</p>
+        <button onClick={onLoginClick} className="inline-flex min-h-10 w-fit items-center text-sm font-black text-sea hover:text-ink">Save your taste <ArrowRight className="ml-2 h-4 w-4" /></button>
+      </section>
+
       <section className="mt-8 sm:mt-12">
         <SectionHeader
           eyebrow="Watch"
           title="K-Video"
           description="Movies and dramas are grouped together first, then connected to OSTs and music pages when the data relationship exists."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewVideos.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
@@ -82,7 +88,7 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
           title="K-Food"
           description="The food section focuses on casual Korean home meals instead of only globally famous restaurant dishes."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewFoods.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
@@ -163,7 +169,7 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
       {items.map((item, index) => (
         <img
           key={item.id}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+          className={`absolute inset-0 h-full w-full ${item.kind === 'movie' || item.kind === 'drama' ? 'object-contain' : 'object-cover'} transition-opacity duration-700 ${
             index === activeIndex ? 'opacity-100' : 'opacity-0'
           }`}
           src={item.imageUrl}
@@ -265,7 +271,7 @@ function PreviewPanel({
         </div>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {items.map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}

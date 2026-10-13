@@ -22,6 +22,7 @@ export type VideoContent = BaseContent & {
   ostIds: string[];
   streaming: string[];
   famousLines?: string[];
+  connectedItems?: KWaveContent[];
 };
 
 export type SongContent = BaseContent & {
@@ -50,6 +51,7 @@ export type FoodContent = BaseContent & {
 };
 
 export type Person = {
+  actorId?: number;
   name: string;
   role: string;
   imageUrl: string;

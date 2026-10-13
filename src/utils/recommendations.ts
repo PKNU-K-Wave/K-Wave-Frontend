@@ -24,8 +24,8 @@ export const preferenceOptions = {
     { label: 'K-Food', value: 'food', kinds: kindGroup.food },
   ],
   tagsByCategory: {
-    video: ['Romance', 'Thriller', 'OST', 'Award-winning'],
-    kpop: ['OST', 'Dance', 'Girl Group'],
+    video: ['Romance', 'Thriller', 'Comedy', 'OST'],
+    kpop: ['OST', 'Group', 'Solo'],
     food: ['Home Food', 'Quick', 'One Pan'],
   },
 };
@@ -41,6 +41,8 @@ export function calculateRecommendations(
   limit = 4,
 ): RecommendedContent[] {
   return content
+    .filter(item => preference.categories.includes(item.kind))
+    .filter(item => preference.tags.length === 0 || item.tags.some(tag => preference.tags.some(preferred => normalize(preferred) === normalize(tag))))
     .map((item) => scoreContent(item, preference))
     .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
@@ -131,5 +133,5 @@ function kindLabel(kind: ContentKind) {
 }
 
 function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 }

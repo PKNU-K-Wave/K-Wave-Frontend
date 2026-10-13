@@ -3,18 +3,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   sendChatMessage,
+  recommendationToContent,
   type ChatApiResponse,
   type ChatContextPayload,
   type ChatTurnPayload,
   type RecommendationApiResponse,
+  type ChatCitation,
 } from '../api/backend';
 import type { KWaveContent, Language } from '../types/content';
+import { clarifyCatalogAnswer } from '../utils/chatAnswers';
+import { citedAnswerSegments } from '../utils/chatCitations';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
   suggestions?: RecommendationApiResponse[];
+  citations?: ChatCitation[];
 };
 
 type ChatWidgetProps = {
@@ -33,27 +38,27 @@ const copyByLanguage = {
     placeholder: 'Ask about K-culture',
     context: 'Asking about',
     thinking: 'Searching the K-Wave catalog...',
-    error: 'I could not reach the guide. I searched the content currently available on this device instead.',
+    error: 'The guide is unavailable. Please try your question again.',
     newChat: 'Start a new chat',
     prompts: ['Recommend a drama and its OST', 'Show me K-POP groups', 'What should I watch first?'],
   },
   zh: {
-    welcome: '可以向我询问韩国电影、电视剧、歌曲或艺人。我会搜索 K-Wave 内容目录。',
+    welcome: '可以询问韩国影视、歌曲或艺人，我会搜索 K-Wave 目录。',
     placeholder: '询问韩国文化',
     context: '正在询问',
-    thinking: '正在搜索 K-Wave 内容目录...',
-    error: '暂时无法连接向导。我改为搜索了此设备上现有的内容。',
+    thinking: '正在搜索 K-Wave 目录...',
+    error: '暂时无法连接，请重试您的问题。',
     newChat: '开始新对话',
-    prompts: ['推荐一部电视剧和它的 OST', '介绍一些 K-POP 组合', '我应该先看什么？'],
+    prompts: ['推荐电视剧和 OST', '推荐 K-POP 组合', '有什么值得看的作品？'],
   },
   ja: {
-    welcome: '韓国の映画、ドラマ、曲、アーティストについて質問できます。K-Waveのカタログから探します。',
+    welcome: '韓国の映画、ドラマ、楽曲、アーティストについて質問できます。',
     placeholder: '韓国文化について質問',
-    context: '質問中のコンテンツ',
-    thinking: 'K-Waveのカタログを検索中...',
-    error: 'ガイドに接続できないため、この端末で利用できるコンテンツを検索しました。',
-    newChat: '新しいチャットを開始',
-    prompts: ['ドラマとOSTをおすすめして', 'K-POPグループを紹介して', '最初に何を観ればいい？'],
+    context: 'この作品について',
+    thinking: 'K-Wave を検索中...',
+    error: '接続できませんでした。もう一度お試しください。',
+    newChat: '新しいチャット',
+    prompts: ['ドラマと OST をおすすめして', 'K-POP グループを教えて', 'おすすめの作品は？'],
   },
 } satisfies Record<Language, Record<string, string | string[]>>;
 
@@ -82,16 +87,7 @@ export function ChatWidget({
     setIsSending(false);
   }, [contextId, language]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useEffect(() => () => { activeControllerRef.current?.abort(); }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -114,19 +110,17 @@ export function ChatWidget({
 
     const controller = new AbortController();
     activeControllerRef.current = controller;
-    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 65000);
     try {
       const response = await sendChatMessage({ message, language, context: contextPayload, history }, controller.signal);
+      if (controller.signal.aborted || activeControllerRef.current !== controller) return;
       setMessages((current) => [...current, toAssistantMessage(response)]);
     } catch {
       if (activeControllerRef.current !== controller) {
         return;
       }
-      const fallback = buildLocalResponse(message, language, contextItem, allContent);
-      setMessages((current) => [
-        ...current,
-        { ...toAssistantMessage(fallback), text: `${copy.error}\n\n${fallback.answer}` },
-      ]);
+      const fallback = buildCatalogFallback(message, language, contextItem, allContent);
+      setMessages((current) => [...current, toAssistantMessage(clarifyCatalogAnswer(fallback, message, language, contextItem))]);
     } finally {
       window.clearTimeout(timeoutId);
       if (activeControllerRef.current === controller) {
@@ -245,7 +239,7 @@ export function ChatWidget({
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   void submit();
                 }
@@ -273,8 +267,10 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
   const isUser = message.role === 'user';
   return (
     <div className={isUser ? 'ml-10' : 'mr-4'}>
-      <div className={`whitespace-pre-line rounded-lg px-3.5 py-3 text-sm leading-6 ${isUser ? 'bg-ink text-white' : 'bg-white text-ink/70'}`}>
-        {message.text}
+      <div className={`whitespace-pre-line break-words rounded-lg px-3.5 py-3 text-sm leading-6 ${isUser ? 'bg-ink text-white' : 'bg-white text-ink/70'}`}>
+        {citedAnswerSegments(message.text, isUser ? [] : message.citations).map((segment, index) => segment.url
+          ? <a key={index} href={segment.url} target="_blank" rel="noopener noreferrer" title={segment.title} aria-label={`Source: ${segment.title}`} className="font-bold text-sea underline underline-offset-2">{segment.text}</a>
+          : <span key={index}>{segment.text}</span>)}
       </div>
       {message.suggestions && message.suggestions.length > 0 ? (
         <div className="mt-2 space-y-2">
@@ -303,7 +299,7 @@ function welcomeMessage(language: Language): ChatMessage {
 }
 
 function toAssistantMessage(response: ChatApiResponse): ChatMessage {
-  return { id: createId(), role: 'assistant', text: response.answer, suggestions: response.suggestions };
+  return { id: createId(), role: 'assistant', text: response.answer, suggestions: response.suggestions, citations: response.citations };
 }
 
 function toHistory(messages: ChatMessage[]): ChatTurnPayload[] {
@@ -326,7 +322,7 @@ function toChatContext(item: KWaveContent): ChatContextPayload {
 function resolveSuggestion(suggestion: RecommendationApiResponse, allContent: KWaveContent[]): KWaveContent | undefined {
   return (
     allContent.find((item) => item.id === suggestion.id) ??
-    allContent.find((item) => item.contentId === suggestion.contentId && matchesType(item, suggestion.contentType))
+    allContent.find((item) => item.contentId === suggestion.contentId && matchesType(item, suggestion.contentType)) ?? recommendationToContent(suggestion)
   );
 }
 
@@ -334,60 +330,32 @@ function matchesType(item: KWaveContent, type: RecommendationApiResponse['conten
   return item.kind === type || (type === 'idol' && item.kind === 'idol');
 }
 
-function buildLocalResponse(
-  message: string,
-  language: Language,
-  contextItem: KWaveContent | null,
-  allContent: KWaveContent[],
-): ChatApiResponse {
-  const normalized = message.toLowerCase();
-  const wantsVideo = hasAny(normalized, ['movie', 'film', 'drama', '영화', '드라마', '电影', '电视剧', '映画', 'ドラマ']);
-  const wantsKPop = hasAny(normalized, ['k-pop', 'kpop', 'song', 'music', 'ost', 'idol', '노래', '아이돌', '歌曲', '偶像', '音楽']);
-  const pool = allContent.filter((item) => {
-    if (wantsVideo && !wantsKPop) return item.kind === 'movie' || item.kind === 'drama';
-    if (wantsKPop && !wantsVideo) return item.kind === 'song' || item.kind === 'idol';
-    return item.kind !== 'food';
-  });
-  const tokens = normalized.split(/[^a-z0-9]+/).filter((token) => token.length >= 2);
-  const ranked = pool
+function buildCatalogFallback(message: string, language: Language, context: KWaveContent | null, content: KWaveContent[]): ChatApiResponse {
+  const normalized = message.toLocaleLowerCase();
+  const terms = normalized.split(/[^\p{L}\p{N}]+/u).filter(term => term.length >= 2);
+  const wantsVideo = ['movie', 'film', 'drama', '영화', '드라마', '映画', 'ドラマ', '电影', '电视剧'].some(term => normalized.includes(term));
+  const wantsKpop = ['song', 'music', 'idol', 'artist', 'k-pop', 'kpop', '노래', '아이돌', '音楽', 'アイドル', '歌曲', '艺人'].some(term => normalized.includes(term));
+  const ranked = content.filter(item => item.kind !== 'food')
+    .filter(item => !wantsVideo || wantsKpop || item.kind === 'movie' || item.kind === 'drama')
+    .filter(item => !wantsKpop || wantsVideo || item.kind === 'song' || item.kind === 'idol')
     .map((item, index) => {
-      const searchable = `${item.title} ${item.subtitle} ${item.tags.join(' ')}`.toLowerCase();
-      const score = tokens.reduce((total, token) => total + (searchable.includes(token) ? 2 : 0), 0) + (contextItem?.id === item.id ? 10 : 0);
-      return { item, score, index };
-    })
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .slice(0, 3)
-    .map(({ item }) => toLocalSuggestion(item));
-  const titles = ranked.map((item) => item.title).join(', ');
-  const answer =
-    language === 'zh'
-      ? `当前内容中可以先看看 ${titles}。点击卡片即可查看详情。`
-      : language === 'ja'
-        ? `現在のコンテンツでは ${titles} がおすすめです。カードを開くと詳細を確認できます。`
-        : `From the content currently available, try ${titles}. Open a card to see the details.`;
+      const haystack = `${item.title} ${item.subtitle} ${item.tags.join(' ')} ${item.description}`.toLocaleLowerCase();
+      return { item, index, score: terms.reduce((score, term) => score + (haystack.includes(term) ? 2 : 0), 0) + (context?.id === item.id ? 20 : 0) };
+    }).sort((a, b) => b.score - a.score || a.index - b.index).slice(0, 3).map(({ item }) => recommendationFromItem(item));
+  const titles = ranked.map(item => item.title).join(', ');
+  const answer = language === 'zh'
+    ? `演示目录中的相关内容：${titles || '没有找到结果'}。连接服务器后可获得基于数据库的详细回答。`
+    : language === 'ja'
+      ? `デモカタログの関連コンテンツ：${titles || '見つかりませんでした'}。サーバー接続後はデータベースに基づく詳しい回答を利用できます。`
+      : `From the demo catalog, try ${titles || 'another title or genre'}. Connect the backend for detailed database-grounded answers.`;
   return { answer, suggestions: ranked, responseMode: 'catalog' };
 }
 
-function toLocalSuggestion(item: KWaveContent): RecommendationApiResponse {
-  const numericId = getNumericId(item.id);
-  return {
-    id: item.id,
-    contentType: item.kind === 'food' ? 'song' : item.kind,
-    domainId: Number.isFinite(numericId) ? numericId : 0,
-    contentId: item.contentId ?? 0,
-    title: item.title,
-    subtitle: item.subtitle,
-    imageUrl: item.imageUrl,
-    tags: item.tags,
-    description: item.description,
-    score: 1,
-    reasons: ['Local catalog'],
-  };
+function recommendationFromItem(item: KWaveContent): RecommendationApiResponse {
+  const domainId = getNumericId(item.id);
+  return { id: item.id, contentType: item.kind === 'food' ? 'song' : item.kind, domainId, contentId: item.contentId ?? domainId, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl, tags: item.tags, description: item.description, score: 1, reasons: ['Demo catalog'] };
 }
 
-function hasAny(value: string, keywords: string[]): boolean {
-  return keywords.some((keyword) => value.includes(keyword));
-}
 
 function createId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
