@@ -5,6 +5,11 @@
 API origin: `https://kwavepknu.me`. Keep `/api/` routed to the backend; frontend
 static files must not replace that route.
 
+The committed `.env.production` sets the public API and public Google callback
+origins for `yarn build`. Local development keeps its localhost callback in the
+ignored `.env.local`. A process-level environment variable can override the
+committed production values; remove any obsolete IP-based deployment variables.
+
 Vite embeds environment variables at build time. An existing `.env.local` or
 deployment environment containing the old IP overrides the code default and must
 be updated **before rebuilding**:
