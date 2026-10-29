@@ -1,3 +1,4 @@
+import { useUI } from "../utils/ui";
 import { Music2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
@@ -32,6 +33,7 @@ const copyByCategory: Record<Category, { eyebrow: string; title: string; descrip
 };
 
 export function CategoryPage({ category, content, onOpen }: CategoryPageProps) {
+  const t = useUI();
   const copy = copyByCategory[category];
   const contentByCategory: Record<Category, KWaveContent[]> = {
     video: content.videos,
@@ -42,20 +44,21 @@ export function CategoryPage({ category, content, onOpen }: CategoryPageProps) {
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <SectionHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      {category === 'food' && <p className="mb-4 text-xs font-semibold text-ink/50">{t('Sample recipes')}</p>}
       {category === 'kpop' ? (
         <div className="space-y-8">
           <KPopGroup
-            label="Tracks"
-            title="K-POP Songs"
-            description="Album jackets, song titles, artists, and tracks that can later connect to OST or idol data."
+            label={t("Tracks")}
+            title={t("K-POP Songs")}
+            description={t("Album jackets, song titles, artists, and tracks that can later connect to OST or idol data.")}
             icon={<Music2 className="h-5 w-5" />}
             items={content.songs}
             onOpen={onOpen}
           />
           <KPopGroup
-            label="Artists"
-            title="Idol Groups"
-            description="Profiles focused on members, social links, and challenge videos."
+            label={t("Artists")}
+            title={t("Idol Groups")}
+            description={t("Profiles focused on members, social links, and challenge videos.")}
             icon={<Users className="h-5 w-5" />}
             items={content.idols}
             onOpen={onOpen}
@@ -87,6 +90,7 @@ function KPopGroup({
   items: KWaveContent[];
   onOpen: (item: KWaveContent) => void;
 }) {
+  const t = useUI();
   const [page, setPage] = useState(0);
   const pageSize = 24;
   const totalPages = Math.ceil(items.length / pageSize);
@@ -107,9 +111,9 @@ function KPopGroup({
         ))}
       </div>
       {totalPages > 1 && <nav aria-label={`${title} pagination`} className="mt-5 flex items-center justify-center gap-4 text-sm">
-        <button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">Previous</button>
+        <button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">{t("Previous")}</button>
         <span>{currentPage + 1} / {totalPages}</span>
-        <button disabled={currentPage + 1 >= totalPages} onClick={() => setPage(currentPage + 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">Next</button>
+        <button disabled={currentPage + 1 >= totalPages} onClick={() => setPage(currentPage + 1)} className="min-h-11 px-3 font-bold text-sea disabled:opacity-30">{t("Next")}</button>
       </nav>}
     </section>
   );

@@ -1,9 +1,11 @@
+import { useUI } from "../utils/ui";
 import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Sparkles } from 'lucide-react';
 import { fetchRecommendations, fetchRecommendationTags, recommendationToContent, type RecommendationApiResponse } from '../api/backend';
 import { ContentCard } from './ContentCard';
 import type { ContentKind, KWaveContent } from '../types/content';
 import { useRecommendationPreference } from '../hooks/useRecommendationPreference';
+import { withAccessToken } from '../api/auth';
 import {
   calculateRecommendations,
   defaultPreference,
@@ -17,10 +19,12 @@ import {
 type RecommendationPanelProps = {
   content: KWaveContent[];
   onOpen: (item: KWaveContent) => void;
+  userId: number;
 };
 
-export function RecommendationPanel({ content, onOpen }: RecommendationPanelProps) {
-  const [preference, setPreference] = useRecommendationPreference();
+export function RecommendationPanel({ content, onOpen, userId }: RecommendationPanelProps) {
+  const t = useUI();
+  const [preference, setPreference, saved] = useRecommendationPreference(userId);
   const [serverTags, setServerTags] = useState<string[] | null>(null);
   const availableTags = serverTags ?? getAvailableTags(preference.categories);
   const [failed, setFailed] = useState(false);
@@ -28,7 +32,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
     const controller = new AbortController();
     setServerTags(null);
     if (preference.categories.some(kind => kind !== 'food')) {
-      fetchRecommendationTags(preference.categories, controller.signal).then(tags => {
+      withAccessToken(token => fetchRecommendationTags(preference.categories, controller.signal, token)).then(tags => {
         if (!controller.signal.aborted) {
           const allowed = preference.categories.includes('food') ? [...new Set([...tags, ...getAvailableTags(['food'])])] : tags;
           setServerTags(allowed);
@@ -58,7 +62,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
     setServerRecommendations([]);
     setFailed(false);
 
-    fetchRecommendations(preference, controller.signal)
+    withAccessToken(token => fetchRecommendations(preference, controller.signal, token))
       .then((response) => mapRecommendations(response, content))
       .then((mappedRecommendations) => {
         if (!controller.signal.aborted) {
@@ -101,30 +105,26 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
   };
 
   return (
-    <section className="rounded-lg bg-white p-5 shadow-soft sm:p-6">
+    <section className="border-t border-ink/10 py-5 sm:py-6">
       <div className="flex flex-col gap-4 border-b border-ink/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-coral">
             <Sparkles className="h-4 w-4" />
-            For you
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-normal text-ink sm:text-3xl">Personalized K-Wave picks</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/60">
-            Choose what you like and K-Wave will surface connected culture cards first.
-          </p>
+            {t("For you")}</p>
+          <h2 className="mt-2 text-xl font-black text-ink">{t("Your interests")}</h2>
+          <p className="mt-2 text-sm text-ink/60" role={saved ? 'status' : 'alert'}>{saved ? t("Saved for your account on this browser.") : t("Your changes could not be saved. Please allow browser storage.")}</p>
         </div>
         <button
           className="inline-flex h-10 w-fit items-center gap-2 rounded-full border border-ink/10 px-4 text-sm font-black text-ink/60 transition hover:bg-ink hover:text-white"
           onClick={() => setPreference(defaultPreference)}
         >
           <RotateCcw className="h-4 w-4" />
-          Reset
-        </button>
+          {t("Reset")}</button>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[18rem_1fr]">
         <div className="space-y-5">
-          <PreferenceGroup title="Category">
+          <PreferenceGroup title={t("Category")}>
             {preferenceOptions.categories.map((option) => {
               const isActive = option.kinds.some((kind) => preference.categories.includes(kind));
 
@@ -136,8 +136,8 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
             })}
           </PreferenceGroup>
 
-          <PreferenceGroup title="Taste">
-            {failed && <p role="status" className="text-xs text-ink/60">Recommendations are offline. Showing available titles.</p>}
+          <PreferenceGroup title={t("Taste")}>
+            {failed && <p role="status" className="text-xs text-ink/60">{t("Recommendations are offline. Showing available titles.")}</p>}
             {availableTags.length > 0 ? (
               availableTags.map((tag) => (
                 <Chip key={tag} isActive={preference.tags.includes(tag)} onClick={() => toggleTag(tag)}>
@@ -146,8 +146,7 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
               ))
             ) : (
               <p className="rounded-lg bg-ink/5 p-3 text-xs font-semibold leading-5 text-ink/50">
-                Select a category first.
-              </p>
+                {t("Select a category first.")}</p>
             )}
           </PreferenceGroup>
         </div>
@@ -171,10 +170,9 @@ export function RecommendationPanel({ content, onOpen }: RecommendationPanelProp
             ))
           ) : (
             <div className="rounded-lg border border-dashed border-ink/15 bg-ink/5 p-5 sm:col-span-2 xl:col-span-4">
-              <p className="text-sm font-black text-ink">No picks yet</p>
+              <p className="text-sm font-black text-ink">{t("No picks yet")}</p>
               <p className="mt-2 text-sm leading-6 text-ink/55">
-                Choose a category and taste tags to build your recommendation list.
-              </p>
+                {t("Choose a category and taste tags to build your recommendation list.")}</p>
             </div>
           )}
         </div>
@@ -208,23 +206,26 @@ function mapRecommendations(
 }
 
 function PreferenceGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  const t = useUI();
   return (
     <div>
-      <h3 className="text-sm font-black text-ink">{title}</h3>
+      <h3 className="text-sm font-black text-ink">{t(title)}</h3>
       <div className="mt-3 flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }
 
 function Chip({ children, isActive, onClick }: { children: React.ReactNode; isActive: boolean; onClick: () => void }) {
+  const t = useUI();
   return (
     <button
+      aria-pressed={isActive}
       className={`h-9 rounded-full px-3 text-xs font-black transition ${
         isActive ? 'bg-ink text-white' : 'bg-ink/5 text-ink/55 hover:bg-white hover:text-ink hover:ring-1 hover:ring-ink/10'
       }`}
       onClick={onClick}
     >
-      {children}
+      {typeof children === 'string' ? t(children) : children}
     </button>
   );
 }

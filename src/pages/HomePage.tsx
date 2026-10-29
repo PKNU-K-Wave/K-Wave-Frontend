@@ -1,7 +1,10 @@
-import { ArrowLeft, ArrowRight, Clapperboard, Music2, Soup, Sparkles, Users, type LucideIcon } from 'lucide-react';
+import { useUI } from "../utils/ui";
+import { ContentImage } from "../components/ContentImage";
+import { ArrowLeft, ArrowRight, Clapperboard, Music2, Soup, Users, Pause, Play, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
+import { ContentSkeleton } from '../components/ContentSkeleton';
 import type { KWaveContent } from '../types/content';
 import type { useKWaveContent } from '../hooks/useKWaveContent';
 
@@ -9,39 +12,36 @@ type HomePageProps = {
   content: ReturnType<typeof useKWaveContent>;
   onOpen: (item: KWaveContent) => void;
   onSelectCategory: (category: 'video' | 'kpop' | 'food') => void;
-  onLoginClick: () => void;
 };
 
-export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: HomePageProps) {
+export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
+  const t = useUI();
   const { foods, idols, songs, videos } = content;
-  const featuredItems = [videos[0], songs[0], idols[0], foods[0], videos[1]].filter(isContent);
-  const previewVideos = videos.slice(0, 3);
-  const previewSongs = songs.slice(0, 3);
-  const previewIdols = idols.slice(0, 3);
-  const previewFoods = foods.slice(0, 3);
+  const featuredItems = [videos[0], songs[0], idols[0], foods[0]].filter(isContent);
+  const previewVideos = videos.filter(item => item.id !== videos[0]?.id).slice(0, 3);
+  const previewSongs = songs.filter(item => item.id !== songs[0]?.id).slice(0, 3);
+  const previewIdols = idols.filter(item => item.id !== idols[0]?.id).slice(0, 3);
+  const previewFoods = foods;
+  if (content.isLoading) return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6"><ContentSkeleton /></main>;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <FeaturedCarousel items={featuredItems} onOpen={onOpen} />
-
-      <section className="mt-6 flex flex-col gap-3 border-y border-ink/10 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="flex items-center gap-2 text-sm font-semibold text-ink/70"><Sparkles className="h-4 w-4 text-coral" />Save your tastes for personalized K-Wave picks.</p>
-        <button onClick={onLoginClick} className="inline-flex min-h-10 w-fit items-center text-sm font-black text-sea hover:text-ink">Save your taste <ArrowRight className="ml-2 h-4 w-4" /></button>
-      </section>
+      {content.isUsingFallback && <div role="status" className="mt-4 border-b border-ink/10 pb-4 text-sm text-ink/60">{t("Sample content · Live titles are unavailable right now.")}<button className="min-h-11 font-bold text-sea" onClick={content.retry}>{t("Try again")}</button></div>}
 
       <section className="mt-8 sm:mt-12">
         <SectionHeader
-          eyebrow="Watch"
-          title="K-Video"
-          description="Movies and dramas are grouped together first, then connected to OSTs and music pages when the data relationship exists."
+          eyebrow={t("Watch")}
+          title={t("K-Video")}
+          description={t("Discover Korean movies, dramas and their music.")}
         />
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewVideos.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
           <ExploreCard
-            title="Explore videos"
-            description="Open the full K-Video collection."
+            title={t("Explore videos")}
+            description={t("Open the full K-Video collection.")}
             accent="dark"
             icon={<Clapperboard className="h-9 w-9 text-citron" />}
             onClick={() => onSelectCategory('video')}
@@ -51,21 +51,21 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
 
       <section className="mt-8 sm:mt-12">
         <SectionHeader
-          eyebrow="Listen"
-          title="K-POP"
-          description="Songs appear with album-style visuals, while idol pages expose members, Instagram, and challenge links."
+          eyebrow={t("Listen")}
+          title={t("K-POP")}
+          description={t("Tracks, artists and the stories behind the music.")}
         />
         <div className="grid gap-5 lg:grid-cols-2">
           <PreviewPanel
-            label="Tracks"
-            title="Songs"
+            label={t("Tracks")}
+            title={t("Songs")}
             icon={<Music2 className="h-5 w-5" />}
             items={previewSongs}
             onOpen={onOpen}
           />
           <PreviewPanel
-            label="Artists"
-            title="Idol groups"
+            label={t("Artists")}
+            title={t("Idol groups")}
             icon={<Users className="h-5 w-5" />}
             items={previewIdols}
             onOpen={onOpen}
@@ -73,8 +73,8 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ExploreCard
-            title="Explore K-POP"
-            description="Browse songs and idol profiles with clear sections."
+            title={t("Explore K-POP")}
+            description={t("Browse songs and idol profiles with clear sections.")}
             accent="light"
             icon={<Music2 className="h-9 w-9 text-coral" />}
             onClick={() => onSelectCategory('kpop')}
@@ -84,17 +84,17 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
 
       <section className="mt-8 sm:mt-12">
         <SectionHeader
-          eyebrow="Cook"
-          title="K-Food"
-          description="The food section focuses on casual Korean home meals instead of only globally famous restaurant dishes."
+          eyebrow={t("Cook")}
+          title={t("K-Food")}
+          description={t("Simple Korean home cooking.")}
         />
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewFoods.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
           <ExploreCard
-            title="Open K-Food"
-            description="Quick recipes for foods people actually make at home."
+            title={t("Open K-Food")}
+            description={t("Quick recipes for foods people actually make at home.")}
             accent="light"
             icon={<Soup className="h-9 w-9 text-sea" />}
             onClick={() => onSelectCategory('food')}
@@ -102,16 +102,14 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg bg-white p-5 shadow-soft sm:mt-12 sm:p-8">
+      <section className="mt-8 border-t border-ink/10 py-6 sm:mt-12 sm:py-8">
         <div className="grid gap-6 md:grid-cols-[0.7fr_1.3fr] md:items-center">
           <div>
             <Music2 className="h-9 w-9 text-coral" />
-            <h2 className="mt-4 text-3xl font-black tracking-normal text-ink">Culture is connected.</h2>
+            <h2 className="mt-4 text-3xl font-black tracking-normal text-ink">{t("Culture is connected.")}</h2>
           </div>
           <p className="text-sm leading-7 text-ink/65">
-            Follow a movie or drama into its OST, then continue into songs and artist profiles without losing the thread.
-            K-Wave turns separate culture categories into one connected discovery path.
-          </p>
+            {t("Follow a movie or drama into its OST, then continue into songs and artist profiles without losing the thread. K-Wave turns separate culture categories into one connected discovery path.")}</p>
         </div>
       </section>
     </main>
@@ -119,11 +117,13 @@ export function HomePage({ content, onOpen, onSelectCategory, onLoginClick }: Ho
 }
 
 function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (item: KWaveContent) => void }) {
+  const t = useUI();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
 
   useEffect(() => {
-    if (items.length < 2 || isPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (items.length < 2 || isPaused || manualPause || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
 
@@ -132,7 +132,7 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
     }, 6000);
 
     return () => window.clearInterval(intervalId);
-  }, [isPaused, items.length]);
+  }, [isPaused, manualPause, items.length]);
 
   useEffect(() => {
     if (activeIndex >= items.length) {
@@ -155,7 +155,7 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
   return (
     <section
       className="relative h-[23rem] overflow-hidden rounded-lg bg-ink shadow-soft sm:h-[27rem] lg:h-[28rem]"
-      aria-label="Featured K-Wave content"
+      aria-label={t("Featured K-Wave content")}
       aria-roledescription="carousel"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -167,12 +167,13 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
       }}
     >
       {items.map((item, index) => (
-        <img
+        <ContentImage
           key={item.id}
-          className={`absolute inset-0 h-full w-full ${item.kind === 'movie' || item.kind === 'drama' ? 'object-contain' : 'object-cover'} transition-opacity duration-700 ${
+          className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-700 ${
             index === activeIndex ? 'opacity-100' : 'opacity-0'
           }`}
-          src={item.imageUrl}
+          src={item.thumbnailUrl || item.imageUrl}
+          loading={index === activeIndex ? 'eager' : 'lazy'}
           alt=""
         />
       ))}
@@ -187,20 +188,21 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
         </span>
 
         <div className="flex shrink-0 items-center gap-2">
+          <button title={t(manualPause ? 'Play carousel' : 'Pause carousel')} aria-label={t(manualPause ? 'Play carousel' : 'Pause carousel')} aria-pressed={manualPause} onClick={() => setManualPause(value => !value)} className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white">{manualPause ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}</button>
           <span className="mr-1 text-xs font-black tabular-nums text-white/70">
             {activeIndex + 1} / {items.length}
           </span>
           <button
             className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-white/25"
             onClick={() => move(-1)}
-            aria-label="Previous featured content"
+            aria-label={t("Previous featured content")}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <button
             className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-white/25"
             onClick={() => move(1)}
-            aria-label="Next featured content"
+            aria-label={t("Next featured content")}
           >
             <ArrowRight className="h-4 w-4" />
           </button>
@@ -208,8 +210,8 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
       </div>
 
       <div className="absolute inset-x-0 bottom-0 p-5 pb-12 text-white drop-shadow-md sm:p-8 sm:pb-14 lg:max-w-3xl lg:p-10 lg:pb-14">
-        <p className="text-xs font-black uppercase text-citron">K-Wave picks</p>
-        <h1 className="mt-2 text-3xl font-black leading-tight tracking-normal sm:text-4xl">{activeItem.title}</h1>
+        <p className="text-xs font-black uppercase text-citron">{t("K-Wave picks")}</p>
+        <h1 className="mt-2 line-clamp-2 break-words text-3xl font-black leading-tight tracking-normal sm:text-4xl">{activeItem.title}</h1>
         <p className="mt-2 text-sm font-bold text-white/80">{activeItem.subtitle}</p>
         <p className="mt-3 line-clamp-2 max-w-2xl text-sm leading-6 text-white/70 sm:text-base sm:leading-7">
           {activeItem.description}
@@ -218,19 +220,19 @@ function FeaturedCarousel({ items, onOpen }: { items: KWaveContent[]; onOpen: (i
           className="mt-5 inline-flex h-11 items-center gap-2 rounded-lg bg-coral px-4 text-sm font-black text-white transition hover:bg-white hover:text-ink focus:outline-none focus:ring-4 focus:ring-coral/30"
           onClick={() => onOpen(activeItem)}
         >
-          View details <ArrowRight className="h-4 w-4" />
+          {t("View details")}<ArrowRight className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-4 flex justify-center gap-2" aria-label="Choose featured content">
+      <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1" aria-label={t("Choose featured content")}>
         {items.map((item, index) => (
           <button
             key={item.id}
-            className={`h-1.5 rounded-full transition-all ${index === activeIndex ? 'w-8 bg-citron' : 'w-4 bg-white/40 hover:bg-white'}`}
+            className="grid h-11 w-11 place-items-center"
             onClick={() => setActiveIndex(index)}
             aria-label={`Show ${item.title}`}
             aria-current={index === activeIndex ? 'true' : undefined}
-          />
+          ><span className={`h-1.5 rounded-full transition-all ${index === activeIndex ? 'w-8 bg-citron' : 'w-4 bg-white/40'}`} /></button>
         ))}
       </div>
     </section>
@@ -262,12 +264,13 @@ function PreviewPanel({
   items: KWaveContent[];
   onOpen: (item: KWaveContent) => void;
 }) {
+  const t = useUI();
   return (
-    <div className="rounded-lg border border-ink/10 bg-white/75 p-4 shadow-soft">
+    <div className="min-w-0 border-t border-ink/10 pt-4">
       <div className="mb-4 flex items-center justify-between border-b border-ink/10 pb-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-coral">{label}</p>
-          <h3 className="mt-1 text-xl font-black tracking-normal text-ink">{title}</h3>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-coral">{t(label)}</p>
+          <h3 className="mt-1 text-xl font-black tracking-normal text-ink">{t(title)}</h3>
         </div>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
@@ -293,6 +296,7 @@ function ExploreCard({
   accent: 'dark' | 'light';
   onClick: () => void;
 }) {
+  const t = useUI();
   const isDark = accent === 'dark';
 
   return (
@@ -306,11 +310,11 @@ function ExploreCard({
     >
       {icon}
       <span>
-        <h3 className="text-2xl font-black tracking-normal">{title}</h3>
-        <p className={`mt-3 text-sm leading-6 ${isDark ? 'text-white/70' : 'text-ink/60'}`}>{description}</p>
+        <h3 className="text-2xl font-black tracking-normal">{t(title)}</h3>
+        <p className={`mt-3 text-sm leading-6 ${isDark ? 'text-white/70' : 'text-ink/60'}`}>{t(description)}</p>
       </span>
       <span className={`inline-flex items-center gap-2 text-sm font-black ${isDark ? 'text-citron' : 'text-sea'}`}>
-        View more <ArrowRight className="h-4 w-4" />
+        {t("View more")}<ArrowRight className="h-4 w-4" />
       </span>
     </button>
   );
