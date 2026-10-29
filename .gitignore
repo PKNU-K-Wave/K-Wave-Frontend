@@ -12,3 +12,5 @@ yarn-error.log*
 .vscode/
 /.g/
 /backend-current/
+/backend/
+/artifacts/

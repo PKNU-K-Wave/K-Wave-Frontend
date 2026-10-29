@@ -1,4 +1,6 @@
-import { ArrowUpRight, Bot, MessageCircle, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
+import { useUI } from "../utils/ui";
+import { ContentImage } from "./ContentImage";
+import { ArrowUpRight, Bot, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
@@ -71,6 +73,7 @@ export function ChatWidget({
   onClearContext,
   onOpenContent,
 }: ChatWidgetProps) {
+  const t = useUI();
   const copy = copyByLanguage[language];
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage(language)]);
   const [input, setInput] = useState('');
@@ -149,30 +152,18 @@ export function ChatWidget({
 
   return (
     <>
-      {!isOpen ? (
-        <button
-          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[45] grid h-14 w-14 place-items-center rounded-full bg-ink text-white shadow-soft transition hover:bg-coral focus:outline-none focus:ring-4 focus:ring-coral/25 md:bottom-6 md:right-6"
-          onClick={() => onOpenChange(true)}
-          aria-label="Ask K-Wave"
-          title="Ask K-Wave"
-        >
-          <MessageCircle className="h-6 w-6" />
-          <span className="absolute right-0 top-0 h-3.5 w-3.5 rounded-full border-2 border-paper bg-citron" />
-        </button>
-      ) : null}
-
       {isOpen ? (
         <section
           className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-3 right-3 z-[60] flex h-[min(68dvh,40rem)] min-h-[22rem] flex-col overflow-hidden rounded-lg border border-ink/10 bg-paper shadow-soft md:bottom-6 md:left-auto md:right-6 md:h-[38rem] md:w-[24rem]"
-          aria-label="Ask K-Wave chat"
+          aria-label={t("Ask K-Wave chat")}
         >
           <header className="flex h-16 shrink-0 items-center gap-3 border-b border-ink/10 bg-white px-4">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-ink text-citron">
               <Bot className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-ink">Ask K-Wave</h2>
-              <p className="text-xs font-semibold text-sea">K-Video · K-POP</p>
+              <h2 className="text-sm font-black text-ink">{t("Ask K-Wave")}</h2>
+              <p className="text-xs font-semibold text-sea">{t("K-Video · K-POP")}</p>
             </div>
             <span className="rounded-full bg-ink/5 px-2.5 py-1 text-[11px] font-black uppercase text-ink/55">
               {language}
@@ -189,7 +180,7 @@ export function ChatWidget({
             <button
               className="grid h-9 w-9 place-items-center rounded-full text-ink/55 transition hover:bg-ink/5 hover:text-ink"
               onClick={() => onOpenChange(false)}
-              aria-label="Close chat"
+              aria-label={t("Close chat")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -197,12 +188,12 @@ export function ChatWidget({
 
           {contextItem ? (
             <div className="flex shrink-0 items-center gap-3 border-b border-ink/10 bg-citron/20 px-4 py-2.5">
-              <img className="h-10 w-10 rounded-lg object-cover" src={contextItem.imageUrl} alt="" />
+              <ContentImage className="h-10 w-10 rounded-lg object-cover" src={contextItem.imageUrl} alt="" />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase text-ink/40">{copy.context as string}</p>
                 <p className="truncate text-xs font-black text-ink">{contextItem.title}</p>
               </div>
-              <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-white" onClick={onClearContext} aria-label="Clear context">
+              <button className="grid h-8 w-8 place-items-center rounded-full hover:bg-white" onClick={onClearContext} aria-label={t("Clear context")}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -252,7 +243,7 @@ export function ChatWidget({
               className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-coral text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-40"
               type="submit"
               disabled={!input.trim() || isSending}
-              aria-label="Send message"
+              aria-label={t("Send message")}
             >
               <Send className="h-4 w-4" />
             </button>
@@ -280,7 +271,7 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
               className="flex w-full items-center gap-3 rounded-lg border border-ink/10 bg-white p-2 text-left transition hover:border-coral/40"
               onClick={() => onOpenSuggestion(suggestion)}
             >
-              <img className="h-12 w-12 rounded-lg object-cover" src={suggestion.imageUrl || ''} alt="" />
+              <ContentImage className="h-12 w-12 rounded-lg object-cover" src={suggestion.imageUrl || ''} alt="" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-black text-ink">{suggestion.title}</span>
                 <span className="mt-1 block truncate text-[11px] font-semibold text-sea">{suggestion.subtitle}</span>

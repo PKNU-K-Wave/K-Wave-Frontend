@@ -17,6 +17,7 @@ type ContentState = {
   foods: typeof foods;
   isLoading: boolean;
   isUsingFallback: boolean;
+  retry: () => void;
 };
 
 export function useKWaveContent(language: Language): ContentState {
@@ -25,6 +26,7 @@ export function useKWaveContent(language: Language): ContentState {
   const [idols, setIdols] = useState<IdolContent[]>(mockIdols);
   const [isLoading, setIsLoading] = useState(true);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,18 +42,16 @@ export function useKWaveContent(language: Language): ContentState {
 
       const videoContent = videoResult.status === 'fulfilled' ? videoResult.value : null;
       const kpopContent = kpopResult.status === 'fulfilled' ? kpopResult.value : null;
-      const hasVideos = Boolean(videoContent?.length);
-      const hasKPop = Boolean(kpopContent && (kpopContent.songs.length > 0 || kpopContent.idols.length > 0));
 
-      setVideos(videoContent?.length ? videoContent : mockVideos);
-      setSongs(kpopContent?.songs.length ? kpopContent.songs : mockSongs);
-      setIdols(kpopContent?.idols.length ? kpopContent.idols : mockIdols);
-      setIsUsingFallback(!hasVideos || !hasKPop);
+      setVideos(videoContent ?? mockVideos);
+      setSongs(kpopContent?.songs ?? mockSongs);
+      setIdols(kpopContent?.idols ?? mockIdols);
+      setIsUsingFallback(videoResult.status === 'rejected' || kpopResult.status === 'rejected');
       setIsLoading(false);
     });
 
     return () => controller.abort();
-  }, [language]);
+  }, [language, attempt]);
 
   const currentAllContent = useMemo(() => {
     const mergedContent: KWaveContent[] = [...videos, ...songs, ...idols, ...foods];
@@ -73,5 +73,6 @@ export function useKWaveContent(language: Language): ContentState {
     foods,
     isLoading,
     isUsingFallback,
+    retry: () => setAttempt(value => value + 1),
   };
 }

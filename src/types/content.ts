@@ -10,7 +10,9 @@ export type BaseContent = {
   title: string;
   subtitle: string;
   imageUrl: string;
+  thumbnailUrl?: string;
   tags: string[];
+  genres?: string[];
   description: string;
 };
 
@@ -23,6 +25,18 @@ export type VideoContent = BaseContent & {
   streaming: string[];
   famousLines?: string[];
   connectedItems?: KWaveContent[];
+  voteAverage?: number;
+  voteCount?: number;
+  resolvedLanguage?: string;
+  culturalBackground?: string;
+  summary?: string;
+  seasonCount?: number;
+  totalEpisodes?: number;
+  seasons?: Array<{ number: number; name?: string | null; episodes?: number | null; airDate?: string | null }>;
+  ostCount?: number;
+  relatedCount?: number;
+  relationType?: string;
+  sharedActors?: Array<{ actorId: number; name: string }>;
 };
 
 export type SongContent = BaseContent & {
@@ -31,6 +45,12 @@ export type SongContent = BaseContent & {
   album: string;
   releaseYear: number;
   relatedIdolIds: string[];
+  previewUrl?: string;
+  trackSeconds?: number;
+  recordType?: string;
+  isTitleTrack?: boolean;
+  featuring?: string;
+  connectedItems?: KWaveContent[];
   challengeUrl?: string;
 };
 
@@ -40,6 +60,13 @@ export type IdolContent = BaseContent & {
   challengeUrl?: string;
   members: Person[];
   relatedSongIds: string[];
+  connectedItems?: KWaveContent[];
+  debutYear?: number;
+  generation?: string;
+  agency?: string;
+  fandomName?: string;
+  fandomCulture?: string;
+  trackTotal?: number;
 };
 
 export type FoodContent = BaseContent & {
