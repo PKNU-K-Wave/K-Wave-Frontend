@@ -46,6 +46,9 @@ type SongResponse = {
   artistId?: number;
   artistName?: string;
   genre?: string | null;
+  genreMain?: string | null;
+  genreSub?: string | null;
+  moodMain?: string | null;
   trackSeconds?: number | null;
   recordType?: string | null;
   isTitleTrack?: boolean | null;
@@ -310,9 +313,11 @@ export async function fetchVideoDetailContent(
 export async function fetchKPopContent(
   signal?: AbortSignal,
 ): Promise<{ idols: IdolContent[]; songs: SongContent[] }> {
+  const artistDiscovery = await musicDiscoveryAvailable('artists', signal);
+  const songDiscovery = await musicDiscoveryAvailable('songs', signal);
   const [artists, songs] = await Promise.all([
-    fetchKPopPage('artists', 0, signal),
-    fetchKPopPage('songs', 0, signal),
+    fetchKPopPage('artists', 0, signal, artistDiscovery ? { sort: 'popularity' } : undefined),
+    fetchKPopPage('songs', 0, signal, songDiscovery ? { sort: 'popularity' } : undefined),
   ]);
   return {
     idols: artists.content as IdolContent[],
@@ -322,19 +327,31 @@ export async function fetchKPopContent(
 
 export type KPopCollection = 'songs' | 'artists';
 export const KPOP_PAGE_SIZE = 24;
+export const MUSIC_GENRES = ['Dance', 'Ballad', 'Hip-Hop', 'Rock', 'R&B', 'Indie', 'Other'] as const;
+export async function musicDiscoveryAvailable(collection: KPopCollection, signal?: AbortSignal): Promise<boolean> {
+  try {
+    const result = await request<ApiPage<Record<string, unknown>>>(`/api/v1/${collection}?page=0&size=1&sort=popularity&direction=desc`, signal);
+    return Array.isArray(result?.content) && result.content.length > 0 && result.content.every(item => Object.prototype.hasOwnProperty.call(item, 'lastfmListeners'));
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return false;
+  }
+}
+export type MusicCatalogOptions = { sort: 'popularity' | 'recent'; genre?: string; language?: Language };
 const legacyKPop = new Map<KPopCollection, Array<SongResponse | ArtistResponse>>();
 
-export async function fetchKPopPage(collection: KPopCollection, page: number, signal?: AbortSignal): Promise<ApiPage<SongContent | IdolContent>> {
+export async function fetchKPopPage(collection: KPopCollection, page: number, signal?: AbortSignal, options?: MusicCatalogOptions): Promise<ApiPage<SongContent | IdolContent>> {
   if (!Number.isSafeInteger(page) || page < 0 || page * KPOP_PAGE_SIZE > 10_000) throw new Error('This page is outside the catalog browsing range.');
   const params = new URLSearchParams({ page: String(page), size: String(KPOP_PAGE_SIZE), sort: collection === 'songs' ? 'releaseDate' : 'debutYear', direction: 'desc' });
-  const response = legacyKPop.get(collection) ?? await request<ApiPage<SongResponse | ArtistResponse> | Array<SongResponse | ArtistResponse>>(`/api/v1/${collection}?${params}`, signal);
+  if (options?.sort === 'popularity') params.set('sort', 'popularity');
+  if (options?.genre && collection === 'songs') params.set('genre', options.genre);
+  if (options?.language) params.set('lang', options.language);
+  const response = (!options ? legacyKPop.get(collection) : undefined) ?? await request<ApiPage<SongResponse | ArtistResponse> | Array<SongResponse | ArtistResponse>>(`/api/v1/${collection}?${params}`, signal);
   let result: ApiPage<SongResponse | ArtistResponse>;
   if (Array.isArray(response)) {
+    if (options) throw new Error('This server does not support music catalog discovery yet.');
     // Older deployments ignore paging. Keep one snapshot rather than downloading it on every page.
-    const sorted = legacyKPop.get(collection) ?? [...response].sort((a, b) => {
-      if (collection === 'songs') return (('releaseDate' in b && b.releaseDate) || '').localeCompare(('releaseDate' in a && a.releaseDate) || '');
-      return (('debutYear' in b && b.debutYear) || 0) - (('debutYear' in a && a.debutYear) || 0);
-    });
+    const sorted = legacyKPop.get(collection) ?? response;
     legacyKPop.set(collection, sorted);
     result = { content: sorted.slice(page * KPOP_PAGE_SIZE, (page + 1) * KPOP_PAGE_SIZE), number: page, totalElements: sorted.length, totalPages: Math.ceil(sorted.length / KPOP_PAGE_SIZE) };
   } else {
@@ -479,7 +496,7 @@ function mapSongToContent(song: SongResponse, artist?: ArtistResponse): SongCont
     releaseYear: toYear(song.releaseDate),
     imageUrl: song.albumImgUrl || artist?.repImgUrl || FALLBACK_SONG_IMAGE_URL,
     tags: unique(['K-POP', song.genre || '', artist ? (artist.isGroup ? 'Group' : 'Solo') : '', song.isTitleTrack ? 'Title track' : '']),
-    genres: song.genre ? song.genre.split(/[,;/|]/).map(value => value.trim()).filter(Boolean) : undefined,
+    genres: song.genreMain ? unique([song.genreMain, song.genreSub || '']) : song.genre ? song.genre.split(/[,;/|]/).map(value => value.trim()).filter(Boolean) : undefined,
     description: '',
     relatedIdolIds: song.artistId || artist?.artistId ? [`artist-${song.artistId || artist?.artistId}`] : [],
     previewUrl: song.previewUrl || undefined,

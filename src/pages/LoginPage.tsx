@@ -12,7 +12,7 @@ type LoginPageProps = {
 export function LoginPage({ onBack, onGoogleLogin, busy = false, error, onRetrySession }: LoginPageProps) {
   const t = useUI();
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-11rem)] max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+    <main className="mx-auto flex max-w-7xl items-start px-4 pb-8 pt-8 sm:px-6 sm:py-10 lg:px-8">
       <section className="grid w-full overflow-hidden rounded-lg border border-ink/10 bg-white shadow-soft lg:grid-cols-[1.1fr_0.9fr]">
         <div className="bg-ink px-6 py-10 text-white sm:px-10 sm:py-14">
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-citron">

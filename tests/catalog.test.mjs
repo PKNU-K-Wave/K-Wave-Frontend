@@ -131,7 +131,37 @@ test('video detail retains ratings, thumbnails, resolved language and cast role'
   } finally { globalThis.fetch = original; }
 });
 
-test('legacy deployments are locally paged without repeated full downloads', async () => {
+test('music capability detection rejects unavailable or silently ignored popularity', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: false, status: 400, json: async () => ({ message: 'Unsupported sort' }) });
+    assert.equal(await api.musicDiscoveryAvailable('artists'), false);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { content: [{ artistId: 1 }] } }) });
+    assert.equal(await api.musicDiscoveryAvailable('artists'), false);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { content: [{ artistId: 1, lastfmListeners: null }] } }) });
+    assert.equal(await api.musicDiscoveryAvailable('artists'), true);
+  } finally { globalThis.fetch = original; }
+});
+
+test('music discovery sends server sorting and genre filters without reordering records', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async url => {
+      const params = new URL(url).searchParams;
+      assert.equal(params.get('sort'), 'popularity');
+      assert.equal(params.get('genre'), 'R&B');
+      assert.equal(params.get('lang'), 'ja');
+      return { ok: true, json: async () => ({ success: true, data: { content: [{ songId: 99, title: 'First', genreMain: 'R&B', genreSub: 'Soul' }, { songId: 1, title: 'Second' }], number: 0, totalPages: 2, totalElements: 30 } }) };
+    };
+    const result = await api.fetchKPopPage('songs', 0, undefined, { sort: 'popularity', genre: 'R&B', language: 'ja' });
+    assert.deepEqual(result.content.map(item => item.id), ['song-99', 'song-1']);
+    assert.deepEqual(result.content[0].genres, ['R&B', 'Soul']);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: [] }) });
+    await assert.rejects(api.fetchKPopPage('songs', 0, undefined, { sort: 'popularity' }), /does not support/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('legacy deployments preserve received order and are locally paged without repeated full downloads', async () => {
   const original = globalThis.fetch;
   let calls = 0;
   try {
@@ -142,7 +172,7 @@ test('legacy deployments are locally paged without repeated full downloads', asy
     assert.equal(first.content.length, 24);
     assert.equal(second.content.length, 6);
     assert.equal(first.totalPages, 2);
-    assert.equal(first.content[0].id, 'song-12');
+    assert.equal(first.content[0].id, 'song-1');
     assert.equal(simultaneous.content[0].id, first.content[0].id);
     assert.equal(calls, initialCalls);
     assert.equal(new Set([...first.content, ...second.content].map(item => item.id)).size, 30);

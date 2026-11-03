@@ -28,7 +28,7 @@ export function Header({ selectedLanguage, onLanguageChange, onHomeClick, query,
   </form>;
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 pt-3 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+      <div className={`mx-auto flex max-w-7xl items-center gap-2 px-4 pt-3 sm:gap-4 sm:px-6 sm:py-3 lg:px-8 ${isLoginView ? 'pb-3' : ''}`}>
         <button
           className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-2 text-left text-white shadow-soft sm:h-auto sm:px-4 sm:py-2"
           onClick={onHomeClick}

@@ -3,6 +3,9 @@ import type { Language } from '../types/content';
 
 export const UIContext = createContext<Language>('en');
 const translations: Record<string, [string, string]> = {
+  'Popularity is unavailable. Showing newest first.': ['暂无法获取人气排序，按最新顺序显示。', '人気順を取得できないため、新しい順で表示しています。'],
+  'Most listened': ['最多收听', 'リスナー数順'], 'Retry genres': ['重新加载类型', 'ジャンルを再取得'],
+  'Page': ['页码', 'ページ'], 'Go to page': ['跳转到该页', '指定ページへ移動'], 'Enter a page number between': ['请输入范围内的页码：', '次の範囲のページ番号を入力：'],
   'Romance': ['爱情', '恋愛'], 'Thriller': ['惊悚', 'スリラー'], 'Comedy': ['喜剧', 'コメディ'], 'Group': ['组合', 'グループ'], 'Solo': ['独唱', 'ソロ'], 'Home Food': ['家常料理', '家庭料理'], 'Quick': ['快捷', '時短'], 'One Pan': ['一锅料理', 'ワンパン料理'],
   'Main navigation': ['主导航', 'メインナビゲーション'],
   'A little more your style': ['更符合你的喜好', 'もっとあなたらしく'], 'ARTIST': ['艺人', 'アーティスト'],

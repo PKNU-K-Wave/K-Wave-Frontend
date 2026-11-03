@@ -1,7 +1,8 @@
 import { useUI } from "../utils/ui";
 import { ContentImage } from "../components/ContentImage";
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Loader2, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+import { Pagination } from '../components/Pagination';
 import { useSessionState } from '../hooks/useSessionState';
 import { fetchSearchDetail, searchContent, type ApiPage, type SearchResult, type SearchType } from '../api/backend';
 import type { KWaveContent, Language } from '../types/content';
@@ -69,7 +70,7 @@ export function SearchPage({ query, language, active, fallbackContent, onOpen, o
       <ContentImage src={item.thumbnailUrl || item.imageUrl} className="h-24 w-16 shrink-0 rounded bg-ink/5 object-contain" />
       <div className="min-w-0 flex-1"><p className="text-xs font-bold text-sea">{item.resultType === 'VIDEO' ? c.video : item.resultType === 'SONG' ? c.song : c.artist}</p><h2 className="mt-1 line-clamp-2 break-words text-base font-black">{item.title}</h2><p className="mt-2 line-clamp-2 break-words text-sm text-ink/60">{item.subtitle}</p>{opening === item && <Loader2 aria-label={c.loading} className="mt-2 h-5 w-5 animate-spin" />}</div>
     </button>)}</div>
-    {data && data.totalPages > 1 && <nav aria-label={t("Pagination")} className="mt-6 flex items-center justify-center gap-4"><button title={t("Previous page")} aria-label={t("Previous page")} disabled={page === 0} onClick={() => setPage(page - 1)} className="grid h-11 w-11 place-items-center rounded-lg bg-white disabled:opacity-30"><ArrowLeft /></button><span>{page + 1} / {data.totalPages}</span><button title={t("Next page")} aria-label={t("Next page")} disabled={page + 1 >= data.totalPages} onClick={() => setPage(page + 1)} className="grid h-11 w-11 place-items-center rounded-lg bg-white disabled:opacity-30"><ArrowRight /></button></nav>}
+    {data && <Pagination page={page} totalPages={Math.min(data.totalPages, Math.floor(10_000 / 12) + 1)} onChange={next => { setPage(next); window.scrollTo({ top: 0 }); }} />}
   </main>;
 }
 

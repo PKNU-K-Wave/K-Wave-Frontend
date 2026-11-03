@@ -19,8 +19,8 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
   const { foods, idols, songs, videos } = content;
   const featuredItems = [videos[0], songs[0], idols[0], foods[0]].filter(isContent);
   const previewVideos = videos.filter(item => item.id !== videos[0]?.id).slice(0, 3);
-  const previewSongs = songs.filter(item => item.id !== songs[0]?.id).slice(0, 3);
-  const previewIdols = idols.filter(item => item.id !== idols[0]?.id).slice(0, 3);
+  const previewSongs = songs.slice(0, 4);
+  const previewIdols = idols.slice(0, 4);
   const previewFoods = foods;
   if (content.isLoading) return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6"><ContentSkeleton /></main>;
 
