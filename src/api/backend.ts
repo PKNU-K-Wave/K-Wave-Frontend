@@ -1,7 +1,57 @@
 import type { RecommendationPreference } from '../utils/recommendations';
-import type { IdolContent, KWaveContent, Language, Person, SongContent, VideoContent } from '../types/content';
+import { displayData } from '../utils/displayText';
+import type { FoodContent, FoodInfo, RecipeDetail, RecipeSummary, IdolContent, KWaveContent, Language, Person, SongContent, VideoContent } from '../types/content';
 
 const DEFAULT_API_BASE_URL = 'https://kwavepknu.me';
+
+export type FoodCategory = { code: string; name: string; foodCount: number };
+export type FoodFilters = { category: string; vegetarian: boolean; exclude: string[] };
+export type RecipeFilters = { dishType: string; cookingMethod: string };
+type FoodResponse = FoodInfo & { foodId: number; name: string; imageUrl?: string | null; description?: string | null; ingredients?: string | null };
+export const FOOD_PAGE_SIZE = 24;
+export const RECIPE_DISH_TYPES = ['SIDE', 'ONE_DISH', 'DESSERT', 'RICE', 'SOUP', 'ETC'] as const;
+export const RECIPE_METHODS = ['BOIL', 'GRILL', 'STIR_FRY', 'STEAM', 'FRY', 'ETC'] as const;
+export async function fetchFoodCategories(language: Language, signal?: AbortSignal): Promise<FoodCategory[]> {
+  const result = await request<FoodCategory[]>(`/api/v1/foods/categories?lang=${language}`, signal);
+  if (!Array.isArray(result) || result.some(item => typeof item.code !== 'string' || typeof item.name !== 'string')) throw new Error('Invalid food categories.');
+  return result;
+}
+function validateFoodPage(page: number) {
+  if (!Number.isSafeInteger(page) || page < 0 || page * FOOD_PAGE_SIZE > 10_000) throw new Error('This page is outside the food browsing range.');
+}
+function validateFoodResult<T>(result: ApiPage<T>, page: number) {
+  if (!result || !Array.isArray(result.content) || result.number !== page || !Number.isSafeInteger(result.totalPages) || result.totalPages < 0 || !Number.isSafeInteger(result.totalElements) || result.totalElements < 0) throw new Error('Invalid food catalog response.');
+}
+export async function fetchFoodPage(language: Language, filters: FoodFilters, page: number, signal?: AbortSignal): Promise<ApiPage<FoodContent>> {
+  validateFoodPage(page);
+  const params = new URLSearchParams({ page: String(page), size: String(FOOD_PAGE_SIZE), lang: language, sort: 'popularity', direction: 'desc' });
+  if (filters.category) params.set('category', filters.category);
+  if (filters.vegetarian) params.set('vegetarian', 'true');
+  if (filters.exclude.length) params.set('exclude', filters.exclude.join(','));
+  const result = await request<ApiPage<FoodResponse>>(`/api/v1/foods?${params}`, signal);
+  validateFoodResult(result, page);
+  return { ...result, content: result.content.map(mapFoodToContent) };
+}
+export async function fetchRecipePage(filters: RecipeFilters, page: number, signal?: AbortSignal): Promise<ApiPage<FoodContent>> {
+  validateFoodPage(page);
+  const params = new URLSearchParams({ page: String(page), size: String(FOOD_PAGE_SIZE) });
+  if (filters.dishType) params.set('dishType', filters.dishType);
+  if (filters.cookingMethod) params.set('cookingMethod', filters.cookingMethod);
+  const result = await request<ApiPage<RecipeSummary>>(`/api/v1/recipes?${params}`, signal);
+  validateFoodResult(result, page);
+  return { ...result, content: result.content.map(mapRecipeToContent) };
+}
+export function fetchRecipeDetail(recipeId: number, signal?: AbortSignal): Promise<RecipeDetail> {
+  if (!Number.isSafeInteger(recipeId) || recipeId <= 0) return Promise.reject(new Error('Invalid recipe ID.'));
+  return request<RecipeDetail>(`/api/v1/recipes/${recipeId}`, signal);
+}
+function mapFoodToContent(food: FoodResponse): FoodContent {
+  return { id: `food-${food.foodId}`, contentId: food.foodId, kind: 'food', title: food.name, subtitle: food.categoryName || food.nameRomanized || '', imageUrl: food.imageUrl || '', tags: [food.categoryName || '', ...(food.isVegetarian === true ? ['Vegetarian'] : [])].filter(Boolean), description: food.description || '', ingredients: food.ingredients ? [food.ingredients] : [], steps: [], foodInfo: { ...food } };
+}
+function mapRecipeToContent(recipe: RecipeSummary): FoodContent {
+  return { id: `food-recipe-${recipe.recipeId}`, recipeId: recipe.recipeId, kind: 'food', title: recipe.name, subtitle: 'Recipe · 한국어', imageUrl: recipe.imageUrl || '', tags: ['Recipe'], description: '', ingredients: [], steps: [] };
+}
+
 const FALLBACK_IMAGE_URL = '';
 const FALLBACK_SONG_IMAGE_URL = '';
 const FALLBACK_VIDEO_IMAGE_URL = '';
@@ -158,10 +208,10 @@ async function request<T>(path: string, signal?: AbortSignal, accessToken?: stri
 
   if (isApiResponse<T>(body)) {
     if (!body.success) throw new Error(body.message || 'API request failed');
-    return body.data;
+    return displayData(body.data);
   }
 
-  return body;
+  return displayData(body);
 }
 
 async function postRequest<T>(path: string, payload: unknown, signal?: AbortSignal): Promise<T> {
@@ -179,9 +229,9 @@ async function postRequest<T>(path: string, payload: unknown, signal?: AbortSign
   const body = (await response.json()) as T | ApiResponse<T>;
   if (isApiResponse<T>(body)) {
     if (!body.success) throw new Error(body.message || 'API request failed');
-    return body.data;
+    return displayData(body.data);
   }
-  return body;
+  return displayData(body);
 }
 
 function isApiResponse<T>(body: T | ApiResponse<T>): body is ApiResponse<T> {
@@ -261,7 +311,13 @@ export function recommendationToContent(result: RecommendationApiResponse): KWav
 }
 
 export function fetchContentDetail(item: KWaveContent, language: Language, signal: AbortSignal): Promise<KWaveContent> {
-  if (item.kind === 'food') return Promise.resolve(item);
+  if (item.kind === 'food') {
+    const recipeMatch = /^food-recipe-(\d+)$/.exec(item.id);
+    if (recipeMatch) return fetchRecipeDetail(Number(recipeMatch[1]), signal).then(recipe => ({ ...mapRecipeToContent(recipe), recipe }));
+    const foodMatch = /^food-(\d+)$/.exec(item.id);
+    if (!foodMatch) return Promise.resolve(item);
+    return request<FoodResponse>(`/api/v1/foods/${foodMatch[1]}?${new URLSearchParams({ lang: language })}`, signal).then(mapFoodToContent);
+  }
   const domainId = Number(item.id.split('-').pop());
   if (!Number.isSafeInteger(domainId) || domainId <= 0) return Promise.resolve(item);
   return fetchSearchDetail({ resultType: item.kind === 'song' ? 'SONG' : item.kind === 'idol' ? 'ARTIST' : 'VIDEO', domainId, contentId: item.contentId ?? domainId, subtype: null, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl }, language, signal);
@@ -337,7 +393,17 @@ export async function musicDiscoveryAvailable(collection: KPopCollection, signal
     return false;
   }
 }
-export type MusicCatalogOptions = { sort: 'popularity' | 'recent'; genre?: string; language?: Language };
+export type KPopFilters = { generation: boolean; generations: string[]; ostOnly: boolean };
+export async function fetchKPopFilters(collection: KPopCollection, signal?: AbortSignal): Promise<KPopFilters> {
+  try {
+    const value = await request<Partial<KPopFilters>>(`/api/v1/${collection}/filters`, signal);
+    return { generation: collection === 'artists' && value.generation === true, generations: Array.isArray(value.generations) ? value.generations.filter(item => typeof item === 'string' && item.trim()) : [], ostOnly: collection === 'songs' && value.ostOnly === true };
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return { generation: false, generations: [], ostOnly: false };
+  }
+}
+export type MusicCatalogOptions = { sort: 'popularity' | 'recent'; genre?: string; language?: Language; generation?: string; ostOnly?: boolean };
 const legacyKPop = new Map<KPopCollection, Array<SongResponse | ArtistResponse>>();
 
 export async function fetchKPopPage(collection: KPopCollection, page: number, signal?: AbortSignal, options?: MusicCatalogOptions): Promise<ApiPage<SongContent | IdolContent>> {
@@ -345,6 +411,8 @@ export async function fetchKPopPage(collection: KPopCollection, page: number, si
   const params = new URLSearchParams({ page: String(page), size: String(KPOP_PAGE_SIZE), sort: collection === 'songs' ? 'releaseDate' : 'debutYear', direction: 'desc' });
   if (options?.sort === 'popularity') params.set('sort', 'popularity');
   if (options?.genre && collection === 'songs') params.set('genre', options.genre);
+  if (options?.ostOnly && collection === 'songs') params.set('ostOnly', 'true');
+  if (options?.generation && collection === 'artists') params.set('generation', options.generation);
   if (options?.language) params.set('lang', options.language);
   const response = (!options ? legacyKPop.get(collection) : undefined) ?? await request<ApiPage<SongResponse | ArtistResponse> | Array<SongResponse | ArtistResponse>>(`/api/v1/${collection}?${params}`, signal);
   let result: ApiPage<SongResponse | ArtistResponse>;

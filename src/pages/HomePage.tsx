@@ -21,7 +21,7 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
   const previewVideos = videos.filter(item => item.id !== videos[0]?.id).slice(0, 3);
   const previewSongs = songs.slice(0, 4);
   const previewIdols = idols.slice(0, 4);
-  const previewFoods = foods;
+  const previewFoods = foods.slice(0, 4);
   if (content.isLoading) return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6"><ContentSkeleton /></main>;
 
   return (
@@ -55,7 +55,7 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
           title={t("K-POP")}
           description={t("Tracks, artists and the stories behind the music.")}
         />
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-8">
           <PreviewPanel
             label={t("Tracks")}
             title={t("Songs")}
@@ -65,14 +65,15 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
           />
           <PreviewPanel
             label={t("Artists")}
-            title={t("Idol groups")}
+            title={t("Artists")}
             icon={<Users className="h-5 w-5" />}
             items={previewIdols}
             onOpen={onOpen}
           />
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6">
           <ExploreCard
+            wide
             title={t("Explore K-POP")}
             description={t("Browse songs and idol profiles with clear sections.")}
             accent="light"
@@ -86,20 +87,22 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
         <SectionHeader
           eyebrow={t("Cook")}
           title={t("K-Food")}
-          description={t("Simple Korean home cooking.")}
+          description={t('Korean food and recipes')}
         />
+        {content.foodError && <p role="status" className="mb-4 text-sm text-ink/60">{t('Could not load food content.')} <button className="min-h-11 font-bold text-sea" onClick={content.retry}>{t('Try again')}</button></p>}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {previewFoods.map((item) => (
             <ContentCard key={item.id} item={item} onOpen={onOpen} />
           ))}
-          <ExploreCard
-            title={t("Open K-Food")}
-            description={t("Quick recipes for foods people actually make at home.")}
-            accent="light"
-            icon={<Soup className="h-9 w-9 text-sea" />}
-            onClick={() => onSelectCategory('food')}
-          />
         </div>
+        <div className="mt-6"><ExploreCard
+          wide
+          title={t("Open K-Food")}
+          description={t('Explore Korean dishes and recipes.')}
+          accent="light"
+          icon={<Soup className="h-9 w-9 text-sea" />}
+          onClick={() => onSelectCategory('food')}
+        /></div>
       </section>
 
       <section className="mt-8 border-t border-ink/10 py-6 sm:mt-12 sm:py-8">
@@ -274,7 +277,7 @@ function PreviewPanel({
         </div>
         <span className="grid h-10 w-10 place-items-center rounded-full bg-ink text-white">{icon}</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {items.map((item) => (
           <ContentCard key={item.id} item={item} onOpen={onOpen} />
         ))}
@@ -289,15 +292,23 @@ function ExploreCard({
   icon,
   accent,
   onClick,
+  wide = false,
 }: {
   title: string;
   description: string;
   icon: React.ReactNode;
   accent: 'dark' | 'light';
   onClick: () => void;
+  wide?: boolean;
 }) {
   const t = useUI();
   const isDark = accent === 'dark';
+
+  if (wide) return <button onClick={onClick} className="group flex min-h-28 w-full items-center gap-4 border-y border-sea/25 bg-sea/5 px-4 py-5 text-left transition hover:bg-sea/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sea sm:gap-6 sm:px-6">
+    <span className="shrink-0" aria-hidden="true">{icon}</span>
+    <span className="min-w-0 flex-1"><span className="block break-words text-lg font-black text-ink sm:text-xl">{t(title)}</span><span className="mt-1 block text-sm leading-6 text-ink/60">{t(description)}</span></span>
+    <span className="flex shrink-0 items-center gap-2 font-bold text-sea"><span className="hidden text-sm sm:block">{t('View more')}</span><ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+  </button>;
 
   return (
     <button

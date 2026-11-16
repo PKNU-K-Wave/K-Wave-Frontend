@@ -5,7 +5,7 @@ import { DetailModal } from './components/DetailModal';
 import { ChatWidget } from './components/ChatWidget';
 import { Header } from './components/Header';
 import { useKWaveContent } from './hooks/useKWaveContent';
-import { CategoryPage } from './pages/CategoryPage';
+import { FoodPage } from './pages/FoodPage';
 import { HomePage } from './pages/HomePage';
 import { RecommendationsPage } from './pages/RecommendationsPage';
 import { SearchPage } from './pages/SearchPage';
@@ -20,6 +20,7 @@ import type { KWaveContent, Language } from './types/content';
 import { useNavigation } from './hooks/useNavigation';
 import { detailSeed, storedLanguage, type View } from './utils/navigation';
 import { readState, writeState } from './utils/browserState';
+import { displayData } from './utils/displayText';
 import { UIContext, translateUI } from './utils/ui';
 
 type CategoryView = 'video' | 'kpop' | 'food';
@@ -77,7 +78,7 @@ function App() {
       if ((auth.completedGoogleLogin && !completedLogin.current) || view === 'login') {
         completedLogin.current = true;
         const pending = readState<{ item: KWaveContent; route: typeof route; createdAt: number } | null>('save-intent', null);
-        if (pending && Date.now() - pending.createdAt < 30 * 60_000 && pending.createdAt <= Date.now()) { itemCache.current.set(pending.item.id, pending.item); navigate(pending.route, true); }
+        if (pending && Date.now() - pending.createdAt < 30 * 60_000 && pending.createdAt <= Date.now()) { itemCache.current.set(pending.item.id, displayData(pending.item)); navigate(pending.route, true); }
         else setView('recommendations');
       }
     } else if (auth.status === 'guest') {
@@ -182,7 +183,7 @@ function App() {
       {visited.includes('home') && <div hidden={view !== 'home'}><HomePage content={content} onOpen={openItem} onSelectCategory={setView} /></div>}
       {visited.includes('video') && <div hidden={view !== 'video'}><VideoPage language={language} active={view === 'video' && !route.detail} onOpen={openItem} /></div>}
       {visited.includes('kpop') && <div hidden={view !== 'kpop'}><KPopPage onOpen={openItem} /></div>}
-      {visited.includes('food') && <div hidden={view !== 'food'}><CategoryPage category="food" content={content} onOpen={openItem} /></div>}
+      {visited.includes('food') && <div hidden={view !== 'food'}><FoodPage key={language} language={language} active={view === 'food' && !route.detail} onOpen={openItem} /></div>}
 
       <DetailModal
         key={selectedItem?.id ?? 'closed'}

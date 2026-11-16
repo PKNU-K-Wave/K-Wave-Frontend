@@ -1,13 +1,7 @@
-import fs from 'node:fs';
-import ts from 'typescript';
+import { loadTypescript } from './load-typescript.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-async function loadTypescript(file) {
-  const source = fs.readFileSync(new URL(file, import.meta.url), 'utf8').replace('import.meta.env.VITE_API_BASE_URL', 'undefined');
-  const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
-  return import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'));
-}
 const api = await loadTypescript('../src/api/backend.ts');
 const recommendations = await loadTypescript('../src/utils/recommendations.ts');
 const chat = await loadTypescript('../src/utils/chatAnswers.ts');
@@ -131,6 +125,81 @@ test('video detail retains ratings, thumbnails, resolved language and cast role'
   } finally { globalThis.fetch = original; }
 });
 
+test('shared API display cleanup covers video prose, quotes, cast and image URL preservation', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { contentId: 9, type: 'MOVIE', title: 'Film &amp; Star', description: 'First<br>Second', culturalBackground: '<p>Culture &amp; history</p>', posterUrl: 'https://example.test/image?a=1&amp;b=2', actors: [{ actorId: 2, name: 'Actor &amp; Name', characterName: '<b>Lead</b>' }], famousLines: [{ lineText: 'Hello&nbsp;world' }] } }) });
+    const result = await api.fetchVideoDetailContent(9, 'en');
+    assert.equal(result.title, 'Film & Star');
+    assert.equal(result.description, 'First\nSecond');
+    assert.equal(result.culturalBackground, 'Culture & history');
+    assert.equal(result.cast[0].name, 'Actor & Name');
+    assert.equal(result.cast[0].role, 'Lead');
+    assert.deepEqual(result.famousLines, ['Hello world']);
+    assert.equal(result.imageUrl, 'https://example.test/image?a=1&amp;b=2');
+  } finally { globalThis.fetch = original; }
+});
+
+test('food pages use server filters, shared content IDs and preserve null metadata', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async url => {
+      const parsed = new URL(url);
+      assert.equal(parsed.pathname, '/api/v1/foods');
+      assert.equal(parsed.searchParams.get('page'), '2');
+      assert.equal(parsed.searchParams.get('category'), 'SOUP');
+      assert.equal(parsed.searchParams.get('exclude'), 'PORK,SEAFOOD');
+      assert.equal(parsed.searchParams.get('vegetarian'), 'true');
+      assert.equal(parsed.searchParams.get('lang'), 'ja');
+      return { ok: true, json: async () => ({ success: true, data: { content: [{ foodId: 17043, name: 'Soup', categoryName: 'Soups', isVegetarian: true, caloriesKcal: null }], number: 2, totalPages: 3, totalElements: 50 } }) };
+    };
+    const result = await api.fetchFoodPage('ja', { category: 'SOUP', vegetarian: true, exclude: ['PORK', 'SEAFOOD'] }, 2);
+    assert.equal(result.content[0].id, 'food-17043');
+    assert.equal(result.content[0].contentId, 17043);
+    assert.equal(result.content[0].foodInfo.caloriesKcal, null);
+    assert.equal(result.content[0].cookTime, undefined);
+    assert.equal(result.content[0].difficulty, undefined);
+    await assert.rejects(api.fetchFoodPage('en', { category: '', vegetarian: false, exclude: [] }, 417), /range/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('recipes have distinct deep-link IDs and never masquerade as central food IDs', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async url => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/api/v1/recipes') {
+        assert.equal(parsed.searchParams.get('dishType'), 'SIDE');
+        assert.equal(parsed.searchParams.get('cookingMethod'), 'STEAM');
+        return { ok: true, json: async () => ({ success: true, data: { content: [{ recipeId: 1, name: 'Recipe', foodId: 17158 }], number: 0, totalPages: 1, totalElements: 1 } }) };
+      }
+      assert.equal(parsed.pathname, '/api/v1/recipes/1');
+      return { ok: true, json: async () => ({ success: true, data: { recipeId: 1, name: 'Recipe', ingredients: 'tofu', steps: [{ order: 1, description: 'Steam' }] } }) };
+    };
+    const result = await api.fetchRecipePage({ dishType: 'SIDE', cookingMethod: 'STEAM' }, 0);
+    assert.equal(result.content[0].id, 'food-recipe-1');
+    assert.equal(result.content[0].contentId, undefined);
+    const detail = await api.fetchContentDetail({ ...result.content[0], recipeId: undefined }, 'en', new AbortController().signal);
+    assert.equal(detail.recipe.steps[0].description, 'Steam');
+  } finally { globalThis.fetch = original; }
+});
+
+test('food details preserve translation, recipe links, dietary data and attribution', async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async url => {
+      assert.equal(new URL(url).pathname, '/api/v1/foods/17043');
+      assert.equal(new URL(url).searchParams.get('lang'), 'zh');
+      return { ok: true, json: async () => ({ success: true, data: { foodId: 17043, name: 'Food', resolvedLanguage: 'ko', description: 'Info', ingredients: 'Rice', imageLicense: 'CC BY-SA', imageSourceUrl: 'https://example.org/image', recipes: [{ recipeId: 168, name: 'Recipe' }] } }) };
+    };
+    const item = await api.fetchContentDetail({ id: 'food-17043', kind: 'food' }, 'zh', new AbortController().signal);
+    assert.equal(item.foodInfo.resolvedLanguage, 'ko');
+    assert.equal(item.foodInfo.recipes[0].recipeId, 168);
+    assert.equal(item.foodInfo.imageLicense, 'CC BY-SA');
+    assert.deepEqual(item.ingredients, ['Rice']);
+  } finally { globalThis.fetch = original; }
+});
+
 test('music capability detection rejects unavailable or silently ignored popularity', async () => {
   const original = globalThis.fetch;
   try {
@@ -140,6 +209,27 @@ test('music capability detection rejects unavailable or silently ignored popular
     assert.equal(await api.musicDiscoveryAvailable('artists'), false);
     globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { content: [{ artistId: 1, lastfmListeners: null }] } }) });
     assert.equal(await api.musicDiscoveryAvailable('artists'), true);
+  } finally { globalThis.fetch = original; }
+});
+
+test('extra music filters follow collection boundaries and require explicit capability metadata', async () => {
+  const original = globalThis.fetch;
+  try {
+    const calls = [];
+    globalThis.fetch = async url => {
+      calls.push(new URL(url));
+      return { ok: true, json: async () => ({ success: true, data: { content: [], number: 0, totalPages: 0, totalElements: 0 } }) };
+    };
+    await api.fetchKPopPage('songs', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대', genre: 'Ballad' });
+    assert.equal(calls.at(-1).searchParams.get('ostOnly'), 'true');
+    assert.equal(calls.at(-1).searchParams.has('generation'), false);
+    await api.fetchKPopPage('artists', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대' });
+    assert.equal(calls.at(-1).searchParams.get('generation'), '4세대');
+    assert.equal(calls.at(-1).searchParams.has('ostOnly'), false);
+    globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    assert.deepEqual(await api.fetchKPopFilters('artists'), { generation: false, generations: [], ostOnly: false });
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ success: true, data: { generation: true, generations: ['3세대', '4세대'], ostOnly: true } }) });
+    assert.deepEqual(await api.fetchKPopFilters('artists'), { generation: true, generations: ['3세대', '4세대'], ostOnly: false });
   } finally { globalThis.fetch = original; }
 });
 

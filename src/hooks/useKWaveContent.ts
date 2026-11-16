@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchKPopContent, fetchVideoContent, resolveVideoRelations } from '../api/backend';
+import { fetchFoodPage, fetchKPopContent, fetchVideoContent, resolveVideoRelations } from '../api/backend';
 import {
   allContent as mockAllContent,
-  foods,
   idols as mockIdols,
   songs as mockSongs,
   videos as mockVideos,
 } from '../data/mockContent';
-import type { IdolContent, KWaveContent, Language, SongContent, VideoContent } from '../types/content';
+import type { FoodContent, IdolContent, KWaveContent, Language, SongContent, VideoContent } from '../types/content';
 
 type ContentState = {
   allContent: KWaveContent[];
   videos: VideoContent[];
   songs: SongContent[];
   idols: IdolContent[];
-  foods: typeof foods;
+  foods: FoodContent[];
+  foodError: boolean;
   isLoading: boolean;
   isUsingFallback: boolean;
   retry: () => void;
@@ -24,6 +24,8 @@ export function useKWaveContent(language: Language): ContentState {
   const [videos, setVideos] = useState<VideoContent[]>(mockVideos);
   const [songs, setSongs] = useState<SongContent[]>(mockSongs);
   const [idols, setIdols] = useState<IdolContent[]>(mockIdols);
+  const [foods, setFoods] = useState<FoodContent[]>([]);
+  const [foodError, setFoodError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -35,7 +37,8 @@ export function useKWaveContent(language: Language): ContentState {
     Promise.allSettled([
       fetchVideoContent(language, controller.signal),
       fetchKPopContent(controller.signal),
-    ]).then(([videoResult, kpopResult]) => {
+      fetchFoodPage(language, { category: '', vegetarian: false, exclude: [] }, 0, controller.signal),
+    ]).then(([videoResult, kpopResult, foodResult]) => {
       if (controller.signal.aborted) {
         return;
       }
@@ -46,6 +49,8 @@ export function useKWaveContent(language: Language): ContentState {
       setVideos(videoContent ?? mockVideos);
       setSongs(kpopContent?.songs ?? mockSongs);
       setIdols(kpopContent?.idols ?? mockIdols);
+      setFoods(foodResult.status === 'fulfilled' ? foodResult.value.content : []);
+      setFoodError(foodResult.status === 'rejected');
       setIsUsingFallback(videoResult.status === 'rejected' || kpopResult.status === 'rejected');
       setIsLoading(false);
     });
@@ -58,7 +63,7 @@ export function useKWaveContent(language: Language): ContentState {
     return mergedContent.map((item) =>
       item.kind === 'movie' || item.kind === 'drama' ? resolveVideoRelations(item, mergedContent) : item,
     );
-  }, [videos, songs, idols]);
+  }, [videos, songs, idols, foods]);
 
   const resolvedVideos = useMemo(
     () => currentAllContent.filter((item): item is VideoContent => item.kind === 'movie' || item.kind === 'drama'),
@@ -71,6 +76,7 @@ export function useKWaveContent(language: Language): ContentState {
     songs,
     idols,
     foods,
+    foodError,
     isLoading,
     isUsingFallback,
     retry: () => setAttempt(value => value + 1),

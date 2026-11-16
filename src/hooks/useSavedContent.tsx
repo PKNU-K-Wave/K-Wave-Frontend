@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { readSaved, savedKey, writeSaved } from '../utils/savedContent';
 import type { KWaveContent } from '../types/content';
+import { displayData } from '../utils/displayText';
 
 import { SavedContentContext as Context } from './savedContentContext';
 import { readState, writeState } from '../utils/browserState';
@@ -14,7 +15,7 @@ export function SavedContentProvider({ userId, onLogin, children, returnRoute }:
     if (!pending) return;
     if (pending.createdAt > Date.now() || Date.now() - pending.createdAt > 30 * 60_000) { writeState('save-intent', null); return; }
     const current = readSaved(userId);
-    try { const next = current.some(item => item.id === pending.item.id) ? current : [pending.item, ...current]; writeSaved(userId, next); setItems(next); window.setTimeout(() => writeState('save-intent', null), 0); }
+    try { const next = current.some(item => item.id === pending.item.id) ? current : [displayData(pending.item), ...current]; writeSaved(userId, next); setItems(next); window.setTimeout(() => writeState('save-intent', null), 0); }
     catch { setError('Could not save on this browser. Please allow browser storage and try again.'); }
   }, [userId]);
   useEffect(() => {
