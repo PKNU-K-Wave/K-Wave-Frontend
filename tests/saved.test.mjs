@@ -1,10 +1,7 @@
-import fs from 'node:fs';
-import ts from 'typescript';
+import { loadTypescript } from './load-typescript.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-const source = fs.readFileSync(new URL('../src/utils/savedContent.ts', import.meta.url), 'utf8');
-const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
-const saved = await import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'));
+const saved = await loadTypescript('../src/utils/savedContent.ts');
 const item = (id, kind, tags, genres) => ({ id, kind, tags, genres, title: id, subtitle: '', description: '', imageUrl: 'https://example.test/image.jpg' });
 test('saved collections persist per account and reject malformed storage', () => {
   const map = new Map(); const storage = { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value) };

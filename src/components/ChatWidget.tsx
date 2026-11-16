@@ -15,6 +15,7 @@ import {
 import type { KWaveContent, Language } from '../types/content';
 import { clarifyCatalogAnswer } from '../utils/chatAnswers';
 import { citedAnswerSegments } from '../utils/chatCitations';
+import { displayText } from '../utils/displayText';
 
 type ChatMessage = {
   id: string;
@@ -261,7 +262,7 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
       <div className={`whitespace-pre-line break-words rounded-lg px-3.5 py-3 text-sm leading-6 ${isUser ? 'bg-ink text-white' : 'bg-white text-ink/70'}`}>
         {citedAnswerSegments(message.text, isUser ? [] : message.citations).map((segment, index) => segment.url
           ? <a key={index} href={segment.url} target="_blank" rel="noopener noreferrer" title={segment.title} aria-label={`Source: ${segment.title}`} className="font-bold text-sea underline underline-offset-2">{segment.text}</a>
-          : <span key={index}>{segment.text}</span>)}
+          : <span key={index}>{isUser ? segment.text : displayText(segment.text, false)}</span>)}
       </div>
       {message.suggestions && message.suggestions.length > 0 ? (
         <div className="mt-2 space-y-2">

@@ -1,5 +1,5 @@
 import { useUI } from "../utils/ui";
-import { Clock3, Music2, Play, Star } from 'lucide-react';
+import { BookOpen, Soup, Music2, Play, Star } from 'lucide-react';
 import type { KWaveContent, Language } from '../types/content';
 import { translationNotice } from '../utils/videoPresentation';
 import { SaveButton } from './SaveButton';
@@ -17,12 +17,12 @@ const iconByKind = {
   drama: Play,
   song: Music2,
   idol: Star,
-  food: Clock3,
+  food: Soup,
 };
 
 export function ContentCard({ item, onOpen, variant = 'compact', language }: ContentCardProps) {
   const t = useUI();
-  const Icon = iconByKind[item.kind];
+  const Icon = item.kind === 'food' && item.recipeId ? BookOpen : iconByKind[item.kind];
   const isLarge = variant === 'large';
   const isVideo = item.kind === 'movie' || item.kind === 'drama';
   const mediaRatio = isVideo ? 'aspect-[2/3]' : item.kind === 'song' || item.kind === 'idol' ? 'aspect-square' : 'aspect-[16/10]';
@@ -47,7 +47,7 @@ export function ContentCard({ item, onOpen, variant = 'compact', language }: Con
         <ContentImage className={`absolute inset-0 h-full w-full ${item.kind === 'food' ? 'object-cover' : 'object-contain'}`} src={item.thumbnailUrl || item.imageUrl} />
         <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-ink shadow sm:left-3 sm:top-3 sm:gap-2 sm:px-3 sm:text-xs">
           <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-coral" />
-          {item.kind === 'idol' ? t("ARTIST") : item.kind.toUpperCase()}
+          {item.kind === 'idol' ? t("ARTIST") : item.kind === 'food' && item.recipeId ? t('Recipe') : item.kind.toUpperCase()}
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export function ContentCard({ item, onOpen, variant = 'compact', language }: Con
         <div className="mb-3 hidden flex-wrap gap-2 sm:flex">
           {item.tags.slice(0, 3).map((tag) => (
             <span key={tag} className="rounded-full bg-ink/5 px-2.5 py-1 text-[11px] font-bold text-ink/60">
-              {tag}
+              {t(tag)}
             </span>
           ))}
         </div>

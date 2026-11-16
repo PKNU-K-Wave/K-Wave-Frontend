@@ -1,5 +1,6 @@
 import { useUI } from "../utils/ui";
 import { ContentImage } from "./ContentImage";
+import { FoodDetails as LiveFoodDetails } from './FoodDetails';
 import { ExternalLink, Instagram, Link2, MessageCircle, Music2, Play, Quote, Users, X, Share2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -96,8 +97,9 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk, l
             <p className="text-xs font-black uppercase tracking-[0.18em] text-coral">{item.kind}</p>
             <h2 className="mt-2 text-3xl font-black leading-tight tracking-normal text-ink sm:text-5xl">{item.title}</h2>
             <p className="mt-2 text-base font-bold text-sea">{item.subtitle}</p>
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-ink/65">{item.description}</p>
+            <p className="mt-5 max-w-2xl whitespace-pre-line text-sm leading-7 text-ink/65">{item.description}</p>
             {(item.kind === 'movie' || item.kind === 'drama') && translationNotice(language, item.resolvedLanguage) && <p className="mt-3 text-xs font-semibold text-ink/50">{translationNotice(language, item.resolvedLanguage)}</p>}
+            {item.kind === 'food' && item.foodInfo?.resolvedLanguage === 'ko' && <p className="mt-3 text-xs text-ink/50">{t('Translation pending')}</p>}
           </div>
         </div>
 
@@ -110,7 +112,7 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk, l
             ) : null}
             {item.kind === 'song' ? <SongDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} language={language} /> : null}
             {item.kind === 'idol' ? <IdolDetails item={item} allContent={allContent} onOpenRelated={onOpenRelated} /> : null}
-            {item.kind === 'food' ? <FoodDetails item={item} /> : null}
+            {item.kind === 'food' && !loading && !error ? item.foodInfo || item.recipeId || item.id.startsWith('food-recipe-') ? <LiveFoodDetails key={item.id} item={item} /> : <FoodDetails item={item} /> : null}
           </main>
 
           <aside className="rounded-lg border border-ink/10 bg-white p-5">
@@ -261,8 +263,8 @@ function FoodDetails({ item }: { item: FoodContent }) {
     <div className="space-y-8">
       <InfoGrid
         items={[
-          ['Cook Time', item.cookTime],
-          ['Difficulty', item.difficulty],
+          ['Cook Time', item.cookTime || ''],
+          ['Difficulty', item.difficulty || ''],
         ]}
       />
       <div>

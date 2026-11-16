@@ -1,4 +1,5 @@
 import type { KWaveContent } from '../types/content';
+import { displayData } from './displayText';
 
 export type Collection = 'video' | 'kpop' | 'food';
 export function collectionOf(item: KWaveContent): Collection {
@@ -7,7 +8,7 @@ export function collectionOf(item: KWaveContent): Collection {
 export const savedKey = (userId: number) => `kwave-saved:user:${userId}`;
 export function readSaved(userId: number, storage?: Pick<Storage, 'getItem'>): KWaveContent[] {
   try {
-    const items: unknown = JSON.parse((storage ?? localStorage).getItem(savedKey(userId)) || '[]');
+    const items: unknown = displayData(JSON.parse((storage ?? localStorage).getItem(savedKey(userId)) || '[]'));
     if (!Array.isArray(items)) return [];
     return [...new Map(items.filter((item): item is KWaveContent => item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.imageUrl === 'string' && typeof item.description === 'string' && typeof item.subtitle === 'string' && ['movie', 'drama', 'song', 'idol', 'food'].includes(item.kind) && Array.isArray(item.tags) && item.tags.every((tag: unknown) => typeof tag === 'string')).map(item => [item.id, item])).values()].slice(0, 500);
   } catch { return []; }
