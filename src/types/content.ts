@@ -50,6 +50,7 @@ export type SongContent = BaseContent & {
   recordType?: string;
   isTitleTrack?: boolean;
   featuring?: string;
+  mood?: string;
   connectedItems?: KWaveContent[];
   challengeUrl?: string;
 };

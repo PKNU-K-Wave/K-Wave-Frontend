@@ -53,6 +53,19 @@ function mapRecipeToContent(recipe: RecipeSummary): FoodContent {
 }
 
 const FALLBACK_IMAGE_URL = '';
+export type TimelineYear = { year: number; songCount: number; videoCount: number };
+export type TimelineContent = TimelineYear & { songs: SongContent[]; videos: VideoContent[]; artists: IdolContent[] };
+export async function fetchTimelineYears(signal?: AbortSignal): Promise<TimelineYear[]> {
+  const rows = await request<TimelineYear[]>('/api/v1/years', signal);
+  if (!Array.isArray(rows) || rows.some(row => !Number.isInteger(row.year) || row.year < 1900 || row.year > 2100 || !Number.isSafeInteger(row.songCount) || row.songCount < 0 || !Number.isSafeInteger(row.videoCount) || row.videoCount < 0)) throw new Error('Invalid timeline years.');
+  return [...rows].sort((a,b) => a.year-b.year);
+}
+export async function fetchTimelineYear(year: number, language: Language, signal?: AbortSignal): Promise<TimelineContent> {
+  if (!Number.isInteger(year) || year < 1900 || year > 2100) throw new Error('Invalid timeline year.');
+  const data = await request<TimelineYear & {songs: SongResponse[]; videos: VideoSummaryResponse[]; debutArtists: ArtistResponse[]}>(`/api/v1/years/${year}?${new URLSearchParams({limit:'4',lang:language})}`, signal);
+  if (data.year !== year || !Array.isArray(data.songs) || !Array.isArray(data.videos) || !Array.isArray(data.debutArtists) || !Number.isSafeInteger(data.songCount) || data.songCount < 0 || !Number.isSafeInteger(data.videoCount) || data.videoCount < 0) throw new Error('Invalid timeline response.');
+  return {...data,songs:data.songs.map(song => mapSongToContent(song)),videos:data.videos.map(mapVideoToContent),artists:data.debutArtists.map(artist => mapArtistToIdol(artist,[],[]))};
+}
 const FALLBACK_SONG_IMAGE_URL = '';
 const FALLBACK_VIDEO_IMAGE_URL = '';
 
@@ -403,7 +416,8 @@ export async function fetchKPopFilters(collection: KPopCollection, signal?: Abor
     return { generation: false, generations: [], ostOnly: false };
   }
 }
-export type MusicCatalogOptions = { sort: 'popularity' | 'recent'; genre?: string; language?: Language; generation?: string; ostOnly?: boolean };
+export const MUSIC_MOODS = ['happy', 'sad', 'calm', 'romantic', 'intense'] as const;
+export type MusicCatalogOptions = { sort: 'popularity' | 'recent'; genre?: string; mood?: string; language?: Language; generation?: string; ostOnly?: boolean };
 const legacyKPop = new Map<KPopCollection, Array<SongResponse | ArtistResponse>>();
 
 export async function fetchKPopPage(collection: KPopCollection, page: number, signal?: AbortSignal, options?: MusicCatalogOptions): Promise<ApiPage<SongContent | IdolContent>> {
@@ -411,6 +425,7 @@ export async function fetchKPopPage(collection: KPopCollection, page: number, si
   const params = new URLSearchParams({ page: String(page), size: String(KPOP_PAGE_SIZE), sort: collection === 'songs' ? 'releaseDate' : 'debutYear', direction: 'desc' });
   if (options?.sort === 'popularity') params.set('sort', 'popularity');
   if (options?.genre && collection === 'songs') params.set('genre', options.genre);
+  if (options?.mood && collection === 'songs') params.set('mood', options.mood);
   if (options?.ostOnly && collection === 'songs') params.set('ostOnly', 'true');
   if (options?.generation && collection === 'artists') params.set('generation', options.generation);
   if (options?.language) params.set('lang', options.language);
@@ -572,6 +587,7 @@ function mapSongToContent(song: SongResponse, artist?: ArtistResponse): SongCont
     recordType: song.recordType || undefined,
     isTitleTrack: song.isTitleTrack ?? undefined,
     featuring: song.featuring || undefined,
+    mood: song.moodMain || undefined,
     connectedItems: artist ? [mapArtistToIdol(artist, [], [])] : [],
   };
 }

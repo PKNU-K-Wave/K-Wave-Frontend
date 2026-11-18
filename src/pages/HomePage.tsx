@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { ContentSkeleton } from '../components/ContentSkeleton';
+import { TimeMachineEntry } from '../components/TimeMachineEntry';
 import type { KWaveContent } from '../types/content';
 import type { useKWaveContent } from '../hooks/useKWaveContent';
 
@@ -12,9 +13,10 @@ type HomePageProps = {
   content: ReturnType<typeof useKWaveContent>;
   onOpen: (item: KWaveContent) => void;
   onSelectCategory: (category: 'video' | 'kpop' | 'food') => void;
+  onTimeMachine: () => void;
 };
 
-export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
+export function HomePage({ content, onOpen, onSelectCategory, onTimeMachine }: HomePageProps) {
   const t = useUI();
   const { foods, idols, songs, videos } = content;
   const featuredItems = [videos[0], songs[0], idols[0], foods[0]].filter(isContent);
@@ -27,6 +29,7 @@ export function HomePage({ content, onOpen, onSelectCategory }: HomePageProps) {
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <FeaturedCarousel items={featuredItems} onOpen={onOpen} />
+      <TimeMachineEntry onOpen={onTimeMachine} />
       {content.isUsingFallback && <div role="status" className="mt-4 border-b border-ink/10 pb-4 text-sm text-ink/60">{t("Sample content · Live titles are unavailable right now.")}<button className="min-h-11 font-bold text-sea" onClick={content.retry}>{t("Try again")}</button></div>}
 
       <section className="mt-8 sm:mt-12">

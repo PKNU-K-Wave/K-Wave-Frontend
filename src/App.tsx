@@ -13,6 +13,7 @@ import { VideoPage } from './pages/VideoPage';
 import { KPopPage } from './pages/KPopPage';
 import { LoginPage } from './pages/LoginPage';
 import { PreferenceSetupPage } from './pages/PreferenceSetupPage';
+import { TimeMachinePage } from './pages/TimeMachinePage';
 import { useAuth } from './hooks/useAuth';
 import { SavedContentProvider } from './hooks/useSavedContent';
 import { canRestoreSession, isGoogleCallback, isGoogleSignInEntry, retrySession, signOut, startGoogleSignIn } from './api/auth';
@@ -147,6 +148,7 @@ function App() {
   return (
     <UIContext.Provider value={language}><SavedContentProvider key={userId ?? 'guest'} userId={userId} onLogin={openLogin} returnRoute={route}>
     <div className="min-h-screen pb-24 md:pb-0">
+      <div data-site-header className="sticky top-[var(--header-offset,0px)] z-30 bg-paper/95 backdrop-blur transition-[top] duration-200 motion-reduce:transition-none md:top-0">
       <Header selectedLanguage={language} onLanguageChange={setLanguage} onHomeClick={() => { setView('home'); setFromSearch(false); }} query={query} onQueryChange={setQuery} onSearch={() => { writeState('last-query', query.trim()); navigate({ view: 'search', query: query.trim(), detail: null }); setFromSearch(false); }} isLoginView={isAuthView} onChat={() => setIsChatOpen(true)} />
 
       <nav aria-label={translateUI('Main navigation', language)} className="mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 py-4 sm:px-6 md:flex lg:px-8">
@@ -170,6 +172,8 @@ function App() {
         })}
       </nav>
 
+      </div>
+
       {fromSearch && view !== 'search' && <div className="mx-auto max-w-7xl px-4"><button className="min-h-11 text-sm font-bold text-sea" onClick={() => { navigate({ view: 'search', query: readState('last-query', ''), detail: null }); setFromSearch(false); }}>{language === 'ja' ? '検索に戻る' : language === 'zh' ? '返回搜索' : 'Back to search'}</button></div>}
       <div hidden={view !== 'search'}>
         <SearchPage key={`${submittedQuery}:${language}`} active={view === 'search'} query={submittedQuery} language={language} fallbackContent={content.allContent} onOpen={openSearchItem} onSearchQuery={value => { setQuery(value); writeState('last-query', value); navigate({ view: 'search', query: value, detail: null }); }} />
@@ -180,7 +184,8 @@ function App() {
         <RecommendationsPage key={userId} userId={userId} content={content} language={language} onOpenRecommendation={openRecommendedItem} onLogout={logout} />
       ) : null}
 
-      {visited.includes('home') && <div hidden={view !== 'home'}><HomePage content={content} onOpen={openItem} onSelectCategory={setView} /></div>}
+      {visited.includes('home') && <div hidden={view !== 'home'}><HomePage content={content} onOpen={openItem} onSelectCategory={setView} onTimeMachine={() => {setIsChatOpen(false);navigate({view:'timeline',year:readState('timeline-year-v2',2019),query:'',detail:null});}} /></div>}
+      {visited.includes('timeline') && <div hidden={view !== 'timeline'}><TimeMachinePage language={language} year={route.view === 'timeline' ? route.year : undefined} active={view === 'timeline' && !route.detail} onYearChange={year => navigate({...route,year},true)} onHome={() => setView('home')} onOpen={openItem} /></div>}
       {visited.includes('video') && <div hidden={view !== 'video'}><VideoPage language={language} active={view === 'video' && !route.detail} onOpen={openItem} /></div>}
       {visited.includes('kpop') && <div hidden={view !== 'kpop'}><KPopPage onOpen={openItem} /></div>}
       {visited.includes('food') && <div hidden={view !== 'food'}><FoodPage key={language} language={language} active={view === 'food' && !route.detail} onOpen={openItem} /></div>}

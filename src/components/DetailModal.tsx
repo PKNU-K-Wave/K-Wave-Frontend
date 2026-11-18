@@ -8,6 +8,7 @@ import { ActorPanel } from './ActorPanel';
 import { SongPreview } from './SongPreview';
 import { SaveButton } from './SaveButton';
 import { VideoConnections } from './VideoConnections';
+import { SimilarArtists } from './SimilarArtists';
 import { seasonLabel, translationNotice } from '../utils/videoPresentation';
 import type { Language, Person } from '../types/content';
 import type { FoodContent, IdolContent, KWaveContent, SongContent, VideoContent } from '../types/content';
@@ -249,10 +250,13 @@ function IdolDetails({
       <RelatedItems
         title={t("Songs")}
         ids={item.relatedSongIds}
+        initialLimit={6}
+        key={`songs:${item.id}`}
         allContent={[...(item.connectedItems ?? []), ...allContent]}
         icon={<Music2 className="h-4 w-4" />}
         onOpen={onOpenRelated}
       />
+      <SimilarArtists key={`similar:${item.id}`} item={item} onOpen={onOpenRelated} />
     </div>
   );
 }
@@ -338,14 +342,17 @@ function RelatedItems({
   allContent,
   icon,
   onOpen,
+  initialLimit,
 }: {
   title: string;
   ids: string[];
   allContent: KWaveContent[];
   icon: React.ReactNode;
   onOpen: (item: KWaveContent) => void;
+  initialLimit?: number;
 }) {
   const t = useUI();
+  const [visible, setVisible] = useState(initialLimit ?? Number.MAX_SAFE_INTEGER);
   const relatedItems = ids.map((id) => allContent.find((content) => content.id === id)).filter(Boolean) as KWaveContent[];
 
   return (
@@ -353,7 +360,7 @@ function RelatedItems({
       <h3 className="text-lg font-black text-ink">{title}</h3>
       {relatedItems.length > 0 ? (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {relatedItems.map((related) => (
+          {relatedItems.slice(0, visible).map((related) => (
             <button
               key={related.id}
               className="flex items-center gap-3 rounded-lg bg-white p-3 text-left transition hover:bg-sea hover:text-white"
@@ -374,6 +381,10 @@ function RelatedItems({
       ) : (
         <p className="mt-3 rounded-lg bg-white p-4 text-sm text-ink/55">{t("No connected item is available yet.")}</p>
       )}
+      {initialLimit && relatedItems.length > initialLimit && <div className="mt-3 flex flex-wrap gap-4">
+        {visible < relatedItems.length && <button onClick={() => setVisible(value => value + initialLimit)} className="min-h-11 text-sm font-bold text-sea">{t('Load more')} ({Math.min(initialLimit, relatedItems.length - visible)})</button>}
+        {visible > initialLimit && <button onClick={() => setVisible(initialLimit)} className="min-h-11 text-sm font-bold text-ink/60">{t('Show less')}</button>}
+      </div>}
     </div>
   );
 }

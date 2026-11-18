@@ -220,10 +220,12 @@ test('extra music filters follow collection boundaries and require explicit capa
       calls.push(new URL(url));
       return { ok: true, json: async () => ({ success: true, data: { content: [], number: 0, totalPages: 0, totalElements: 0 } }) };
     };
-    await api.fetchKPopPage('songs', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대', genre: 'Ballad' });
+    await api.fetchKPopPage('songs', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대', genre: 'Ballad', mood: 'calm' });
+    assert.equal(calls.at(-1).searchParams.get('mood'), 'calm');
     assert.equal(calls.at(-1).searchParams.get('ostOnly'), 'true');
     assert.equal(calls.at(-1).searchParams.has('generation'), false);
-    await api.fetchKPopPage('artists', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대' });
+    await api.fetchKPopPage('artists', 0, undefined, { sort: 'popularity', ostOnly: true, generation: '4세대', mood: 'calm' });
+    assert.equal(calls.at(-1).searchParams.has('mood'), false);
     assert.equal(calls.at(-1).searchParams.get('generation'), '4세대');
     assert.equal(calls.at(-1).searchParams.has('ostOnly'), false);
     globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
