@@ -38,6 +38,16 @@ a {
   display: none;
 }
 
+@keyframes timeline-arrive {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.timeline-intro { animation: timeline-arrive 400ms ease-out both; }
+.timeline-results { animation: timeline-arrive 220ms ease-out both; }
+.timeline-year-swap { animation: timeline-arrive 180ms ease-out both; }
+.timeline-year-menu { animation: timeline-arrive 140ms ease-out both; }
+
 :focus-visible {
   outline: 2px solid #32847d;
   outline-offset: 3px;

@@ -1,6 +1,6 @@
 import { useUI } from "../utils/ui";
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
-import { RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { CatalogFilters, FilterChoices } from './CatalogFilters';
 import { fetchVideoCapabilities, fetchVideoGenres, type VideoFilters, type VideoGenre } from '../api/backend';
 import type { Language } from '../types/content';
 
@@ -13,7 +13,6 @@ const labels = {
 export function VideoFilterBar({ language, filters, onChange, onReset }: { language: Language; filters: VideoFilters; onChange: Dispatch<SetStateAction<VideoFilters>>; onReset: () => void }) {
   const t = useUI();
   const c = labels[language];
-  const [expanded, setExpanded] = useState(false);
   const [genres, setGenres] = useState<VideoGenre[]>([]);
   const [capabilities, setCapabilities] = useState({ years: false, direction: false, ost: false });
   const [capabilityError, setCapabilityError] = useState(false);
@@ -37,24 +36,13 @@ export function VideoFilterBar({ language, filters, onChange, onReset }: { langu
     return () => controller.abort();
   }, [language, filters.type, retry]);
   const era = filters.yearFrom ? String(filters.yearFrom) : filters.yearTo === 1999 ? 'before2000' : '';
-  return <>
-    <div className="mt-5 flex flex-wrap items-center gap-3">
-      <div className="flex min-h-11 w-full gap-1 sm:w-auto" role="group" aria-label={t("Video type")}>{[['', c.all], ['MOVIE', c.movie], ['DRAMA', c.drama]].map(([value, label]) => <button key={value} aria-pressed={filters.type === value} className={`min-h-11 rounded-lg px-3 text-sm font-bold ${filters.type === value ? 'bg-ink text-white' : 'text-ink/60 hover:bg-white'}`} onClick={() => onChange(current => ({ ...current, type: value, genre: '' }))}>{label}</button>)}</div>
-      <select aria-label={t("Video sort")} className="h-11 min-w-[9rem] flex-1 rounded-lg border border-ink/10 bg-white px-3 text-sm sm:flex-none" value={`${filters.sort}:${filters.direction ?? 'desc'}`} onChange={event => { const [sort, direction] = event.target.value.split(':'); onChange(current => ({ ...current, sort, direction: direction as 'asc' | 'desc' })); }}>
-        <option value="voteAverage:desc">{c.rating}</option><option value="voteCount:desc">{c.votes}</option><option value="releaseDate:desc">{c.newest}</option><option value="releaseDate:asc" disabled={!capabilities.direction}>{c.oldest}</option>
-      </select>
-      <button title={c.filters} aria-label={c.filters} aria-expanded={expanded} aria-controls="video-filters" onClick={() => setExpanded(value => !value)} className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink/10 bg-white"><SlidersHorizontal className="h-5 w-5" /></button>
-    </div>
-    {expanded && <div id="video-filters" className="mt-4 border-t border-ink/10 pt-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid min-w-0 gap-2 text-sm font-semibold">{c.era}<select aria-label={c.era} disabled={!capabilities.years} value={era} className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 disabled:opacity-50" onChange={event => {
-          const value = event.target.value;
-          onChange(current => ({ ...current, yearFrom: value && value !== 'before2000' ? Number(value) : undefined, yearTo: value === 'before2000' ? 1999 : value ? Number(value) + 9 : undefined }));
-        }}><option value="">{c.anyEra}</option>{[2020, 2010, 2000].map(year => <option key={year} value={year}>{year}{t("s")}</option>)}<option value="before2000">{c.before}</option></select></label>
-        <label className="grid min-w-0 gap-2 text-sm font-semibold">{c.genre}<select aria-label={c.genre} disabled={loading || error} value={filters.genre} className="h-11 w-full rounded-lg border border-ink/10 bg-white px-3 disabled:opacity-50" onChange={event => onChange(current => ({ ...current, genre: event.target.value }))}><option value="">{c.allGenres}</option>{genres.map(genre => <option key={genre.code} value={genre.code}>{genre.name} ({genre.count.toLocaleString()})</option>)}</select></label>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" disabled={!capabilities.ost} checked={filters.hasOst === true} onChange={event => onChange(current => ({ ...current, hasOst: event.target.checked ? true : undefined }))} className="h-4 w-4 accent-sea" />{c.ost}</label><button onClick={onReset} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-sea"><RefreshCw className="h-4 w-4" />{c.reset}</button></div>
-      {(error || capabilityError) && <div role="status" className="mt-2 flex flex-wrap items-center gap-3 text-sm text-ink/60"><span>{c.unavailable}</span><button className="min-h-11 font-bold text-sea" onClick={() => setRetry(value => value + 1)}>{c.retry}</button></div>}
-    </div>}
-  </>;
+  const count = Number(Boolean(filters.type)) + Number(Boolean(filters.genre)) + Number(Boolean(era)) + Number(filters.hasOst === true) + Number(filters.sort !== 'voteCount' || filters.direction === 'asc');
+  return <CatalogFilters count={count} onReset={onReset}>
+    <FilterChoices label={t('Video type')} value={filters.type} options={[[ '', c.all ], ['MOVIE', c.movie], ['DRAMA', c.drama]].map(([value, label]) => ({value, label}))} onChange={value => onChange(current => ({ ...current, type: value, genre: '' }))} />
+    <FilterChoices label={t('Sort')} value={`${filters.sort}:${filters.direction ?? 'desc'}`} options={[{value:'voteCount:desc',label:c.votes},{value:'voteAverage:desc',label:c.rating},{value:'releaseDate:desc',label:c.newest},{value:'releaseDate:asc',label:c.oldest,disabled:!capabilities.direction}]} onChange={value => { const [sort, direction] = value.split(':'); onChange(current => ({...current, sort, direction: direction as 'asc' | 'desc'})); }} />
+    <FilterChoices label={c.genre} value={filters.genre} disabled={loading || error} options={[{value:'',label:c.allGenres},...genres.map(genre => ({value:genre.code,label:`${genre.name} (${genre.count.toLocaleString()})`}))]} onChange={value => onChange(current => ({...current,genre:value}))} />
+    <FilterChoices label={c.era} value={era} disabled={!capabilities.years} options={[{value:'',label:c.anyEra},...[2020,2010,2000].map(year => ({value:String(year),label:`${year}${t('s')}`})),{value:'before2000',label:c.before}]} onChange={value => onChange(current => ({...current,yearFrom:value && value !== 'before2000' ? Number(value) : undefined,yearTo:value === 'before2000' ? 1999 : value ? Number(value)+9 : undefined}))} />
+    <label className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" disabled={!capabilities.ost} checked={filters.hasOst === true} onChange={event => onChange(current => ({...current,hasOst:event.target.checked ? true : undefined}))} className="h-4 w-4 accent-sea" />{c.ost}</label>
+    {(error || capabilityError) && <div role="status" className="flex flex-wrap items-center gap-3 text-sm text-ink/60"><span>{c.unavailable}</span><button className="min-h-11 font-bold text-sea" onClick={() => setRetry(value => value+1)}>{c.retry}</button></div>}
+  </CatalogFilters>;
 }
