@@ -8,6 +8,11 @@ const chat = await loadTypescript('../src/utils/chatAnswers.ts');
 const citations = await loadTypescript('../src/utils/chatCitations.ts');
 const videoPresentation = await loadTypescript('../src/utils/videoPresentation.ts');
 
+test('streaming availability is not overwritten with a filming-location answer', () => {
+  const response = { answer: 'I do not have verified streaming availability.', suggestions: [], responseMode: 'catalog' };
+  assert.equal(chat.clarifyCatalogAnswer(response, 'where can I watch this movie?', 'en', { kind: 'movie', title: 'Film' }), response);
+});
+
 test('web citations are clickable safe segments with Unicode offsets', () => {
   const answer = '😀 Place [1]';
   const sources = [{ url: 'https://example.org/place', title: 'Tourism', startIndex: 8, endIndex: 11 }];
