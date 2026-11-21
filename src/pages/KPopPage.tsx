@@ -15,7 +15,7 @@ export function KPopPage({ onOpen }: { onOpen: (item: KWaveContent) => void }) {
   const [tab, setTab] = useSessionState<KPopCollection>('kpop-tab', 'songs');
   const language = useContext(UIContext);
   return <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-    <header className="border-b border-ink/10 pb-5">
+    <header>
       <p className="text-xs font-black uppercase text-coral">{t("K-POP")}</p>
       <h1 className="mt-1 text-2xl font-black sm:text-3xl">{t("Songs and artists")}</h1>
       <div className="mt-5 flex gap-1" role="tablist" aria-label={t("K-POP catalog")}>
@@ -89,7 +89,7 @@ function KPopFeed({ collection, active, onOpen }: { collection: KPopCollection; 
   const more = current && page + 1 < current.totalPages;
   const withinRange = (page + 1) * KPOP_PAGE_SIZE <= 10_000;
   const go = (next: number) => { if (loading) return; setPage(next); start.current?.scrollIntoView({ block: 'start' }); };
-  return <section aria-busy={loading} className="py-5">
+  return <section aria-busy={loading} className="pb-5">
     {available === false && <div role="status" className="mb-4 flex flex-wrap items-center gap-3 text-sm text-ink/60"><span>{t('Popularity is unavailable. Showing newest first.')}</span><button className="min-h-11 font-bold text-sea" onClick={() => setCapabilityRetry(value => value + 1)}>{t('Try again')}</button></div>}
     {(available || filters.generation || filters.ostOnly) && <CatalogFilters count={Number(sort !== 'popularity') + (collection === 'songs' ? Number(Boolean(genre)) + Number(Boolean(selectedMood)) + Number(selectedOst) : Number(Boolean(selectedGeneration)))} onReset={() => {setPage(0);setSort('popularity');if(collection === 'songs'){setGenre('');setMood('');setOstOnly(false);}else setGeneration('');}}>
       {available && <FilterChoices label={t('Sort')} value={sort} options={[{value:'popularity',label:t('Most listened')},{value:'recent',label:t('Newest')}]} onChange={value => {setPage(0);setSort(value as MusicCatalogOptions['sort']);}} />}

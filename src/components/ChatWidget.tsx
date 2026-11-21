@@ -256,6 +256,8 @@ export function ChatWidget({
 }
 
 function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpenSuggestion: (item: RecommendationApiResponse) => void }) {
+  const t = useUI();
+  const [expanded, setExpanded] = useState(false);
   const isUser = message.role === 'user';
   return (
     <div className={isUser ? 'ml-10' : 'mr-4'}>
@@ -266,7 +268,7 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
       </div>
       {message.suggestions && message.suggestions.length > 0 ? (
         <div className="mt-2 space-y-2">
-          {message.suggestions.slice(0, 3).map((suggestion) => (
+          {message.suggestions.slice(0, expanded ? undefined : 3).map((suggestion) => (
             <button
               key={suggestion.id}
               className="flex w-full items-center gap-3 rounded-lg border border-ink/10 bg-white p-2 text-left transition hover:border-coral/40"
@@ -280,6 +282,7 @@ function ChatBubble({ message, onOpenSuggestion }: { message: ChatMessage; onOpe
               <ArrowUpRight className="h-4 w-4 shrink-0 text-ink/40" />
             </button>
           ))}
+          {message.suggestions.length > 3 && <button type="button" onClick={() => setExpanded(value => !value)} className="min-h-11 text-xs font-bold text-sea">{t(expanded ? 'Show less' : 'View more')}</button>}
         </div>
       ) : null}
     </div>
@@ -304,8 +307,8 @@ function toHistory(messages: ChatMessage[]): ChatTurnPayload[] {
 function toChatContext(item: KWaveContent): ChatContextPayload {
   const numericId = getNumericId(item.id);
   return {
-    contentType: item.kind,
-    domainId: Number.isFinite(numericId) ? numericId : undefined,
+    contentType: item.kind === 'food' && item.recipeId ? 'recipe' : item.kind,
+    domainId: item.kind === 'food' && item.recipeId ? item.recipeId : Number.isFinite(numericId) ? numericId : undefined,
     contentId: item.contentId,
     title: item.title,
   };

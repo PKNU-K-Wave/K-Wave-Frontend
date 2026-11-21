@@ -6,6 +6,7 @@ import { ContentCard } from '../components/ContentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { ContentSkeleton } from '../components/ContentSkeleton';
 import { TimeMachineEntry } from '../components/TimeMachineEntry';
+import { KTrend } from '../components/KTrend';
 import type { KWaveContent } from '../types/content';
 import type { useKWaveContent } from '../hooks/useKWaveContent';
 
@@ -29,6 +30,7 @@ export function HomePage({ content, onOpen, onSelectCategory, onTimeMachine }: H
   return (
     <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
       <FeaturedCarousel items={featuredItems} onOpen={onOpen} />
+      <KTrend />
       <TimeMachineEntry onOpen={onTimeMachine} />
       {content.isUsingFallback && <div role="status" className="mt-4 border-b border-ink/10 pb-4 text-sm text-ink/60">{t("Sample content · Live titles are unavailable right now.")}<button className="min-h-11 font-bold text-sea" onClick={content.retry}>{t("Try again")}</button></div>}
 

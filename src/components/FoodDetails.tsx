@@ -4,6 +4,7 @@ import { fetchRecipeDetail } from '../api/backend';
 import type { FoodContent, Nutrition, RecipeDetail } from '../types/content';
 import { useUI } from '../utils/ui';
 import { ContentImage } from './ContentImage';
+import { RecipePicker } from './RecipePicker';
 
 function safeLink(value?: string | null) {
   try { const url = new URL(value || ''); return ['https:', 'http:'].includes(url.protocol) ? url.href : undefined; } catch { return undefined; }
@@ -41,7 +42,7 @@ export function FoodDetails({ item }: { item: FoodContent }) {
       <NutritionDetails values={info} />
       <section className="border-t border-ink/10 pt-5">
         <h3 className="text-lg font-black">{t('Recipes')}</h3>
-        {info.recipes?.length ? <label className="mt-3 block text-sm"><span className="sr-only">{t('Choose a recipe')}</span><select aria-label={t('Choose a recipe')} className="min-h-11 w-full min-w-0 rounded-lg border border-ink/15 bg-white px-3" value={selected} onChange={event => setSelected(event.target.value)}><option value="">{t('Choose a recipe')}</option>{info.recipes.map(value => <option key={value.recipeId} value={value.recipeId}>{value.name}</option>)}</select></label> : <p className="mt-2 text-sm text-ink/60">{t('No linked recipes yet.')}</p>}
+        {info.recipes?.length ? <RecipePicker recipes={info.recipes} value={selected} onChange={setSelected} /> : <p className="mt-2 text-sm text-ink/60">{t('No linked recipes yet.')}</p>}
       </section>
       {source && <p className="border-t border-ink/10 pt-4 text-xs leading-6 text-ink/55">{t('Image credit')}: {info.imageAuthor || t('Source')} · {info.imageLicense || ''} <a href={source} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 text-sea underline">{t('View source')}<ExternalLink className="h-3 w-3" /></a></p>}
     </>}

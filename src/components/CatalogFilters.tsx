@@ -6,7 +6,7 @@ export function CatalogFilters({ children, count = 0, onReset }: { children: Rea
   const t = useUI();
   const [open, setOpen] = useState(false);
   const id = useId();
-  return <div className="mt-4 border-b border-ink/10 pb-4">
+  return <div data-catalog-filters className="my-5 border-y border-ink/10 py-4">
     <div className="flex items-center gap-3">
       <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen(value => !value)} className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-bold ${open || count ? 'border-sea/40 bg-sea/10 text-sea' : 'border-ink/10 bg-white text-ink/70'}`}><SlidersHorizontal className="h-4 w-4" />{t('Filters')}{count > 0 && <span className="text-xs">({count})</span>}<ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></button>
       {count > 0 && <button type="button" onClick={onReset} className="min-h-11 text-sm font-bold text-sea">{t('Reset')}</button>}

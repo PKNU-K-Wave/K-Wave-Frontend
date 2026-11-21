@@ -3,6 +3,19 @@ import type { Language } from '../types/content';
 
 export const UIContext = createContext<Language>('en');
 const translations: Record<string, [string, string]> = {
+  'Rising': ['热度上升', '急上昇'],
+  'News article': ['新闻报道', 'ニュース記事'], 'Song': ['歌曲', '楽曲'], 'Video': ['影视', '映像作品'],
+  'Hot now': ['正在流行', 'いま話題'], 'Cooling down': ['热度下降', '落ち着き中'], 'Past trends': ['往日流行', '過去の流行'],
+  'Refresh trends': ['刷新趋势', 'トレンドを更新'],
+  'What is catching on in Korea?': ['韩国最近在流行什么？', '韓国でいま、何が話題？'], 'K-Trend categories': ['趋势分类', 'トレンドの分類'],
+  'Updated': ['更新于', '更新'], 'Loading trends...': ['正在加载趋势…', 'トレンドを読み込み中…'],
+  'K-Trend will be available after the server update.': ['服务器更新后即可查看K-Trend。', 'サーバー更新後にK-Trendをご覧いただけます。'],
+  'Could not load trends right now.': ['暂时无法加载趋势。', '現在トレンドを取得できません。'],
+  'No verified trends in this category yet.': ['此分类暂无已确认的趋势。', 'この分類には確認済みのトレンドがまだありません。'],
+  'Read source (new tab)': ['阅读来源（新标签页）', '出典を読む（新しいタブ）'], 'Search related news (new tab)': ['搜索相关新闻（新标签页）', '関連ニュースを検索（新しいタブ）'],
+  'News search': ['新闻搜索', 'ニュース検索'], 'Korean original': ['韩文原文', '韓国語の原文'],
+  'Auto-translated · Not reviewed': ['自动翻译 · 未审核', '自動翻訳・未確認'],
+  'Naver DataLab · Weekly search trends. Sources may be in Korean.': ['Naver DataLab · 每周搜索趋势。来源可能为韩文。', 'Naver DataLab・週間検索動向。出典は韓国語の場合があります。'],
   'Close year picker': ['关闭年份选择', '年の選択を閉じる'],
   'Previous decade': ['上一个十年', '前の10年'], 'Next decade': ['下一个十年', '次の10年'],
   'K-Wave Time Machine': ['K-Wave 时光机', 'K-Wave タイムマシン'],
@@ -41,6 +54,7 @@ const translations: Record<string, [string, string]> = {
   'Could not load categories.': ['无法加载分类。', 'カテゴリーを取得できませんでした。'], 'Could not load food content.': ['无法加载美食内容。', '料理情報を取得できませんでした。'], 'No matching food content.': ['没有符合条件的美食内容。', '条件に合う料理情報はありません。'],
   'Recipes are currently available in Korean.': ['食谱目前仅提供韩语。', 'レシピは現在韓国語のみです。'],
   'Korean name': ['韩语名称', '韓国語名'], 'Romanized name': ['罗马字名称', 'ローマ字表記'], 'Spice level': ['辣度', '辛さ'], 'Dietary information': ['饮食信息', '食材情報'], 'How to eat': ['食用方法', '食べ方'],
+  'Search recipes': ['搜索食谱', 'レシピを検索'], 'Close recipe picker': ['关闭食谱选择', 'レシピ選択を閉じる'], 'No matching recipes.': ['没有匹配的食谱。', '一致するレシピがありません。'],
   'Choose a recipe': ['选择食谱', 'レシピを選択'], 'No linked recipes yet.': ['暂无关联食谱。', '関連するレシピはまだありません。'], 'Image credit': ['图片署名', '画像クレジット'], 'Source': ['来源', '出典'], 'View source': ['查看来源', '出典を見る'],
   'Loading recipe...': ['正在加载食谱…', 'レシピを読み込み中…'], 'Could not load recipe.': ['无法加载食谱。', 'レシピを取得できませんでした。'],
   'Cooking steps': ['烹饪步骤', '調理手順'], 'Cooking steps are unavailable.': ['暂无烹饪步骤。', '調理手順がありません。'], 'Cooking tip': ['烹饪提示', '調理のヒント'], 'Recipe source: Ministry of Food and Drug Safety': ['食谱来源：韩国食品医药品安全处', 'レシピ出典：韓国食品医薬品安全処'],

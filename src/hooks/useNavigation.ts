@@ -16,6 +16,8 @@ export function useNavigation() {
     window.history.scrollRestoration = 'manual';
     const update = () => setRoute(readRoute());
     window.addEventListener('popstate', update); window.addEventListener('hashchange', update);
+    // Auth bootstrap may have sanitized a callback URL before these listeners were installed.
+    update();
     const save = () => { const current = readRoute(); if (!current.detail) writeState(`scroll:${current.view}`, window.scrollY); };
     window.addEventListener('scroll', save, { passive: true });
     return () => { window.history.scrollRestoration = previousRestoration; window.removeEventListener('popstate', update); window.removeEventListener('hashchange', update); window.removeEventListener('scroll', save); };

@@ -1,0 +1,512 @@
+diff --git a/K-wave/build.gradle b/K-wave/build.gradle
+index da4ef0d..512cea8 100644
+--- a/K-wave/build.gradle
++++ b/K-wave/build.gradle
+@@ -48,6 +48,7 @@ dependencies {
+ 
+ 	// 테스트 환경 통합
+ 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
++	testRuntimeOnly 'com.h2database:h2'
+ 	testCompileOnly 'org.projectlombok:lombok'
+ 	testAnnotationProcessor 'org.projectlombok:lombok'
+ 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+diff --git a/K-wave/src/main/java/com/init/kwave/artist/controller/ArtistV1Controller.java b/K-wave/src/main/java/com/init/kwave/artist/controller/ArtistV1Controller.java
+index 4951eae..ad39e3f 100644
+--- a/K-wave/src/main/java/com/init/kwave/artist/controller/ArtistV1Controller.java
++++ b/K-wave/src/main/java/com/init/kwave/artist/controller/ArtistV1Controller.java
+@@ -49,12 +49,27 @@ public class ArtistV1Controller {
+             @RequestParam(defaultValue = "20") int size,
+             @RequestParam(required = false) String sort,
+             @RequestParam(required = false) String direction,
++            @RequestParam(required = false) String generation,
+             @RequestParam(required = false) String lang
+     ) {
+         int pageSize = clampSize(size);
+         validatePage(page, pageSize);
+         Pageable pageable = PageRequest.of(page, pageSize, sort(sort, direction));
+-        return ResponseEntity.ok(ApiResponse.ok(artistService.getArtists(pageable, SupportedLanguage.normalize(lang, DEFAULT_LANGUAGE))));
++        return ResponseEntity.ok(ApiResponse.ok(artistService.getArtists(pageable, generation(generation), SupportedLanguage.normalize(lang, DEFAULT_LANGUAGE))));
++    }
++
++    @GetMapping("/filters")
++    public ResponseEntity<ApiResponse<Map<String, Object>>> getFilters() {
++        return ResponseEntity.ok(ApiResponse.ok(Map.of("generation", true, "generations", artistService.getGenerations())));
++    }
++
++    private static String generation(String value) {
++        if (value == null || value.isBlank()) return null;
++        String normalized = value.trim();
++        if (normalized.length() > 10 || !normalized.matches("[1-9][0-9]?([.][0-9])?세대")) {
++            throw new IllegalArgumentException("generation must be a stored generation code, for example 4세대");
++        }
++        return normalized;
+     }
+ 
+     @GetMapping("/{artistId}")
+diff --git a/K-wave/src/main/java/com/init/kwave/artist/service/ArtistService.java b/K-wave/src/main/java/com/init/kwave/artist/service/ArtistService.java
+index b53ed7f..2a35ba8 100644
+--- a/K-wave/src/main/java/com/init/kwave/artist/service/ArtistService.java
++++ b/K-wave/src/main/java/com/init/kwave/artist/service/ArtistService.java
+@@ -38,9 +38,18 @@ public class ArtistService {
+     private final ArtistTranslationRepository artistTranslationRepository;
+     private final TranslatedTitleLoader translatedTitleLoader;
+ 
++    public List<String> getGenerations() {
++        return artistRepository.findGenerations();
++    }
++
+     /** 아티스트 목록을 페이지 단위로 조회한다 (이름·소개·팬덤은 요청 언어, 번역이 없으면 한국어) **/
+     public Page<ArtistResponse> getArtists(Pageable pageable, String language) {
++        return getArtists(pageable, null, language);
++    }
++
++    public Page<ArtistResponse> getArtists(Pageable pageable, String generation, String language) {
+         Specification<Artist> spec = ArtistSpecifications.all();
++        if (generation != null) spec = spec.and(ArtistSpecifications.hasGeneration(generation));
+         // 인기순은 청취자 수가 없는 아티스트를 뒤로 보내야 해서 정렬을 Specification 이 직접 붙인다
+         Sort.Order popularity = pageable.getSort().getOrderFor("lastfmListeners");
+         if (popularity != null) {
+diff --git a/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistRepository.java b/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistRepository.java
+index 5bd8d23..9dc4713 100644
+--- a/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistRepository.java
++++ b/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistRepository.java
+@@ -7,11 +7,14 @@ import org.springframework.data.jpa.domain.Specification;
+ import org.springframework.data.jpa.repository.EntityGraph;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
++import org.springframework.data.jpa.repository.Query;
+ 
+ import java.util.List;
+ import java.util.Optional;
+ 
+ public interface ArtistRepository extends JpaRepository<Artist, Integer>, JpaSpecificationExecutor<Artist> {
++    @Query("select distinct trim(a.generation) from Artist a where a.generation is not null and trim(a.generation) <> '' order by trim(a.generation)")
++    List<String> findGenerations();
+     boolean existsByName(String name);
+ 
+     boolean existsByExternalArtistId(String externalArtistId);
+diff --git a/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistSpecifications.java b/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistSpecifications.java
+index 2d922c0..253fd25 100644
+--- a/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistSpecifications.java
++++ b/K-wave/src/main/java/com/init/kwave/artist/repository/ArtistSpecifications.java
+@@ -15,6 +15,10 @@ public final class ArtistSpecifications {
+         return (root, query, cb) -> cb.conjunction();
+     }
+ 
++    public static Specification<Artist> hasGeneration(String generation) {
++        return (root, query, cb) -> cb.equal(cb.trim(root.get("generation")), generation);
++    }
++
+     // 인기순 정렬. 방향과 관계없이 Last.fm 청취자 수가 없는 아티스트는 뒤로 보낸다 (count 쿼리에는 정렬을 붙이지 않음)
+     public static Specification<Artist> orderByPopularity(boolean ascending) {
+         return (root, query, cb) -> {
+diff --git a/K-wave/src/main/java/com/init/kwave/song/controller/SongV1Controller.java b/K-wave/src/main/java/com/init/kwave/song/controller/SongV1Controller.java
+index b19e8ba..5ddbb76 100644
+--- a/K-wave/src/main/java/com/init/kwave/song/controller/SongV1Controller.java
++++ b/K-wave/src/main/java/com/init/kwave/song/controller/SongV1Controller.java
+@@ -46,15 +46,11 @@ public class SongV1Controller {
+             "r&b", "R&B",
+             "indie", "Indie",
+             "other", "Other");
+-    // 대소문자를 무시하고 받은 분위기 이름을 mood_main 저장값으로 바꾼다 (k_music_genre.csv 의 대표 분위기 5개)
+-    private static final Map<String, String> MOODS = Map.of(
+-            "happy", "happy",
+-            "sad", "sad",
+-            "calm", "calm",
+-            "romantic", "romantic",
+-            "intense", "intense");
+ 
+     private final SongService songService;
++    private static final Map<String, String> MOODS = Map.of(
++            "happy", "happy", "sad", "sad", "calm", "calm",
++            "romantic", "romantic", "intense", "intense");
+ 
+     @GetMapping
+     public ResponseEntity<ApiResponse<Page<SongResponse>>> getSongs(
+@@ -64,13 +60,19 @@ public class SongV1Controller {
+             @RequestParam(required = false) String direction,
+             @RequestParam(required = false) String genre,
+             @RequestParam(required = false) String mood,
++            @RequestParam(defaultValue = "false") boolean ostOnly,
+             @RequestParam(required = false) String lang
+     ) {
+         int pageSize = clampSize(size);
+         validatePage(page, pageSize);
+         Pageable pageable = PageRequest.of(page, pageSize, sort(sort, direction));
+         return ResponseEntity.ok(ApiResponse.ok(
+-                songService.getSongs(pageable, genreMain(genre), moodMain(mood), SupportedLanguage.normalize(lang, DEFAULT_LANGUAGE))));
++                songService.getSongs(pageable, genreMain(genre), moodMain(mood), ostOnly, SupportedLanguage.normalize(lang, DEFAULT_LANGUAGE))));
++    }
++
++    @GetMapping("/filters")
++    public ResponseEntity<ApiResponse<Map<String, Boolean>>> getFilters() {
++        return ResponseEntity.ok(ApiResponse.ok(Map.of("ostOnly", true)));
+     }
+ 
+     @GetMapping("/{songId}")
+@@ -121,16 +123,11 @@ public class SongV1Controller {
+         return genreMain;
+     }
+ 
+-    // mood 를 안 보내면 전체(null), 보내면 대표 분위기 저장값으로 바꾼다. 모르는 분위기는 400
+     private static String moodMain(String mood) {
+-        if (mood == null || mood.isBlank()) {
+-            return null;
+-        }
+-        String moodMain = MOODS.get(mood.trim().toLowerCase(Locale.ROOT));
+-        if (moodMain == null) {
+-            throw new IllegalArgumentException("mood 는 happy, sad, calm, romantic, intense 중 하나여야 합니다: " + mood);
+-        }
+-        return moodMain;
++        if (mood == null || mood.isBlank()) return null;
++        String normalized = MOODS.get(mood.trim().toLowerCase(Locale.ROOT));
++        if (normalized == null) throw new IllegalArgumentException("mood must be happy, sad, calm, romantic or intense: " + mood);
++        return normalized;
+     }
+ 
+     private static Sort.Direction direction(String direction) {
+diff --git a/K-wave/src/main/java/com/init/kwave/song/service/SongService.java b/K-wave/src/main/java/com/init/kwave/song/service/SongService.java
+index b3db015..76b5d76 100644
+--- a/K-wave/src/main/java/com/init/kwave/song/service/SongService.java
++++ b/K-wave/src/main/java/com/init/kwave/song/service/SongService.java
+@@ -25,15 +25,18 @@ public class SongService {
+     private final SongRepository songRepository;
+     private final TranslatedTitleLoader translatedTitleLoader;
+ 
+-    /** 곡 목록을 페이지 단위로 조회한다 (genreMain·moodMain 이 있으면 그 대표 장르·분위기만, 제목·아티스트 이름은 요청 언어, 번역이 없으면 한국어) **/
++    /** 곡 목록을 페이지 단위로 조회한다 (genreMain 이 있으면 그 대표 장르만, 제목·아티스트 이름은 요청 언어, 번역이 없으면 한국어) **/
+     public Page<SongResponse> getSongs(Pageable pageable, String genreMain, String moodMain, String language) {
++        return getSongs(pageable, genreMain, moodMain, false, language);
++    }
++
++    public Page<SongResponse> getSongs(Pageable pageable, String genreMain, String moodMain, boolean ostOnly, String language) {
+         Specification<Song> spec = SongSpecifications.all();
++        if (ostOnly) spec = spec.and(SongSpecifications.isOst());
++        if (moodMain != null) spec = spec.and(SongSpecifications.hasMoodMain(moodMain));
+         if (genreMain != null) {
+             spec = spec.and(SongSpecifications.hasGenreMain(genreMain));
+         }
+-        if (moodMain != null) {
+-            spec = spec.and(SongSpecifications.hasMoodMain(moodMain));
+-        }
+         // 인기순은 청취자 수가 없는 곡을 뒤로 보내야 해서 정렬을 Specification 이 직접 붙인다
+         Sort.Order popularity = pageable.getSort().getOrderFor("lastfmListeners");
+         if (popularity != null) {
+diff --git a/K-wave/src/main/java/com/init/kwave/song/repository/SongSpecifications.java b/K-wave/src/main/java/com/init/kwave/song/repository/SongSpecifications.java
+index 216f73c..8cc2479 100644
+--- a/K-wave/src/main/java/com/init/kwave/song/repository/SongSpecifications.java
++++ b/K-wave/src/main/java/com/init/kwave/song/repository/SongSpecifications.java
+@@ -1,6 +1,9 @@
+ package com.init.kwave.song.repository;
+ 
+ import com.init.kwave.song.entity.Song;
++import com.init.kwave.content.entity.ContentRelation;
++import jakarta.persistence.criteria.Root;
++import jakarta.persistence.criteria.Subquery;
+ import jakarta.persistence.criteria.Path;
+ import org.springframework.data.jpa.domain.Specification;
+ 
+@@ -15,12 +18,23 @@ public final class SongSpecifications {
+         return (root, query, cb) -> cb.conjunction();
+     }
+ 
++    // Use the same video -> song OST_OF relation as VideoOstRepository; EXISTS avoids duplicate songs.
++    public static Specification<Song> isOst() {
++        return (root, query, cb) -> {
++            Subquery<Integer> ost = query.subquery(Integer.class);
++            Root<ContentRelation> relation = ost.from(ContentRelation.class);
++            ost.select(cb.literal(1)).where(
++                    cb.equal(relation.get("targetContentId"), root.get("content").get("contentId")),
++                    cb.equal(relation.get("relationType"), "OST_OF"));
++            return cb.exists(ost);
++        };
++    }
++
+     // 대표 장르(genre_main)가 같은 곡
+     public static Specification<Song> hasGenreMain(String genreMain) {
+         return (root, query, cb) -> cb.equal(root.get("genreMain"), genreMain);
+     }
+ 
+-    // 대표 분위기(mood_main)가 같은 곡
+     public static Specification<Song> hasMoodMain(String moodMain) {
+         return (root, query, cb) -> cb.equal(root.get("moodMain"), moodMain);
+     }
+diff --git a/K-wave/src/test/java/com/init/kwave/artist/ArtistListQueryTest.java b/K-wave/src/test/java/com/init/kwave/artist/ArtistListQueryTest.java
+index eced5c3..b0d356c 100644
+--- a/K-wave/src/test/java/com/init/kwave/artist/ArtistListQueryTest.java
++++ b/K-wave/src/test/java/com/init/kwave/artist/ArtistListQueryTest.java
+@@ -29,10 +29,10 @@ class ArtistListQueryTest {
+     void popularity_정렬을_받으면_청취자_수_기준으로_정렬한다() {
+         ArtistService artistService = mock(ArtistService.class);
+ 
+-        new ArtistV1Controller(artistService).getArtists(0, 20, "POPULARITY", "asc", "en");
++        new ArtistV1Controller(artistService).getArtists(0, 20, "POPULARITY", "asc", null, "en");
+ 
+         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+-        verify(artistService).getArtists(captor.capture(), eq("en"));
++        verify(artistService).getArtists(captor.capture(), org.mockito.ArgumentMatchers.isNull(), eq("en"));
+         assertThat(captor.getValue().getSort())
+                 .containsExactly(Sort.Order.asc("lastfmListeners"), Sort.Order.asc("artistId"));
+     }
+diff --git a/K-wave/src/test/java/com/init/kwave/song/SongListQueryTest.java b/K-wave/src/test/java/com/init/kwave/song/SongListQueryTest.java
+index 6da2a9b..900f442 100644
+--- a/K-wave/src/test/java/com/init/kwave/song/SongListQueryTest.java
++++ b/K-wave/src/test/java/com/init/kwave/song/SongListQueryTest.java
+@@ -29,66 +29,66 @@ class SongListQueryTest {
+ 
+     @Test
+     void popularity_정렬은_청취자_수_내림차순이_기본이고_같은_값은_songId_로_고정한다() {
+-        controller.getSongs(0, 20, "Popularity", null, null, null, "en");
++        controller.getSongs(0, 20, "Popularity", null, null, null, false, "en");
+ 
+         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+-        verify(songService).getSongs(captor.capture(), isNull(), isNull(), eq("en"));
++        verify(songService).getSongs(captor.capture(), isNull(), isNull(), eq(false), eq("en"));
+         assertThat(captor.getValue().getSort())
+                 .containsExactly(Sort.Order.desc("lastfmListeners"), Sort.Order.asc("songId"));
+     }
+ 
+     @Test
+     void genre_는_대소문자를_무시하고_대표_장르_저장값으로_바꾼다() {
+-        controller.getSongs(0, 20, null, null, "hip-HOP", null, "en");
+-        controller.getSongs(0, 20, null, null, " r&b ", null, "en");
++        controller.getSongs(0, 20, null, null, "hip-HOP", null, false, "en");
++        controller.getSongs(0, 20, null, null, " r&b ", null, false, "en");
+ 
+-        verify(songService).getSongs(any(Pageable.class), eq("Hip-Hop"), isNull(), eq("en"));
+-        verify(songService).getSongs(any(Pageable.class), eq("R&B"), isNull(), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), eq("Hip-Hop"), isNull(), eq(false), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), eq("R&B"), isNull(), eq(false), eq("en"));
+     }
+ 
+     @Test
+     void 빈_genre_는_전체_조회() {
+-        controller.getSongs(0, 20, null, null, " ", null, "en");
++        controller.getSongs(0, 20, null, null, " ", null, false, "en");
+ 
+-        verify(songService).getSongs(any(Pageable.class), isNull(), isNull(), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), isNull(), isNull(), eq(false), eq("en"));
+     }
+ 
+     @Test
+     void 모르는_genre_와_sort_는_거절한다() {
+-        assertThatThrownBy(() -> controller.getSongs(0, 20, null, null, "K-Pop", null, "en"))
++        assertThatThrownBy(() -> controller.getSongs(0, 20, null, null, "K-Pop", null, false, "en"))
+                 .isInstanceOf(IllegalArgumentException.class)
+                 .hasMessageContaining("genre");
+-        assertThatThrownBy(() -> controller.getSongs(0, 20, "listeners", null, null, null, "en"))
++        assertThatThrownBy(() -> controller.getSongs(0, 20, "listeners", null, null, null, false, "en"))
+                 .isInstanceOf(IllegalArgumentException.class)
+                 .hasMessageContaining("popularity");
+     }
+ 
+     @Test
+     void mood_는_대소문자를_무시하고_대표_분위기_저장값으로_바꾼다() {
+-        controller.getSongs(0, 20, null, null, null, "HAPPY", "en");
+-        controller.getSongs(0, 20, null, null, null, " Romantic ", "en");
++        controller.getSongs(0, 20, null, null, null, "HAPPY", false, "en");
++        controller.getSongs(0, 20, null, null, null, " Romantic ", false, "en");
+ 
+-        verify(songService).getSongs(any(Pageable.class), isNull(), eq("happy"), eq("en"));
+-        verify(songService).getSongs(any(Pageable.class), isNull(), eq("romantic"), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), isNull(), eq("happy"), eq(false), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), isNull(), eq("romantic"), eq(false), eq("en"));
+     }
+ 
+     @Test
+     void 빈_mood_는_전체_조회() {
+-        controller.getSongs(0, 20, null, null, null, " ", "en");
++        controller.getSongs(0, 20, null, null, null, " ", false, "en");
+ 
+-        verify(songService).getSongs(any(Pageable.class), isNull(), isNull(), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), isNull(), isNull(), eq(false), eq("en"));
+     }
+ 
+     @Test
+     void genre_와_mood_를_함께_보내면_둘_다_넘긴다() {
+-        controller.getSongs(0, 20, null, null, "ballad", "sad", "en");
++        controller.getSongs(0, 20, null, null, "ballad", "sad", false, "en");
+ 
+-        verify(songService).getSongs(any(Pageable.class), eq("Ballad"), eq("sad"), eq("en"));
++        verify(songService).getSongs(any(Pageable.class), eq("Ballad"), eq("sad"), eq(false), eq("en"));
+     }
+ 
+     @Test
+     void 모르는_mood_는_거절한다() {
+-        assertThatThrownBy(() -> controller.getSongs(0, 20, null, null, null, "angry", "en"))
++        assertThatThrownBy(() -> controller.getSongs(0, 20, null, null, null, "angry", false, "en"))
+                 .isInstanceOf(IllegalArgumentException.class)
+                 .hasMessageContaining("mood");
+     }
+diff --git a/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterControllerTest.java b/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterControllerTest.java
+new file mode 100644
+index 0000000..1a7f41b
+--- /dev/null
++++ b/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterControllerTest.java
+@@ -0,0 +1,53 @@
++package com.init.kwave.catalog;
++
++import com.init.kwave.artist.controller.ArtistV1Controller;
++import com.init.kwave.artist.service.ArtistService;
++import com.init.kwave.song.controller.SongV1Controller;
++import com.init.kwave.song.service.SongService;
++import com.init.kwave.common.exception.GlobalExceptionHandler;
++import org.junit.jupiter.api.Test;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.setup.MockMvcBuilders;
++import java.util.List;
++import static org.mockito.ArgumentMatchers.*;
++import static org.mockito.Mockito.*;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++class KPopFilterControllerTest {
++    private final ArtistService artistService = mock(ArtistService.class);
++    private final SongService songService = mock(SongService.class);
++    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(
++            new ArtistV1Controller(artistService), new SongV1Controller(songService))
++            .setControllerAdvice(new GlobalExceptionHandler()).build();
++
++    @Test void generationIsPassedToServiceAndInvalidValuesAreRejected() throws Exception {
++        when(artistService.getArtists(any(Pageable.class), eq("4세대"), eq("en"))).thenReturn(Page.empty(org.springframework.data.domain.PageRequest.of(0, 20)));
++        mvc.perform(get("/api/v1/artists").param("generation", "4세대").param("sort", "popularity"))
++                .andExpect(status().isOk());
++        verify(artistService).getArtists(any(Pageable.class), eq("4세대"), eq("en"));
++        mvc.perform(get("/api/v1/artists").param("generation", "not-a-generation")).andExpect(status().isBadRequest());
++    }
++
++    @Test void ostAndGenreAreCombinedAndBooleanDefaultsToFalse() throws Exception {
++        when(songService.getSongs(any(Pageable.class), nullable(String.class), nullable(String.class), anyBoolean(), eq("en"))).thenReturn(Page.empty(org.springframework.data.domain.PageRequest.of(0, 20)));
++        mvc.perform(get("/api/v1/songs").param("genre", "ballad").param("mood", "CALM").param("ostOnly", "true"))
++                .andExpect(status().isOk());
++        verify(songService).getSongs(any(Pageable.class), eq("Ballad"), eq("calm"), eq(true), eq("en"));
++        mvc.perform(get("/api/v1/songs")).andExpect(status().isOk());
++        verify(songService).getSongs(any(Pageable.class), isNull(), isNull(), eq(false), eq("en"));
++        mvc.perform(get("/api/v1/songs").param("ostOnly", "bad")).andExpect(status().isBadRequest());
++    }
++
++    @Test void metadataAdvertisesOnlySupportedFilters() throws Exception {
++        when(artistService.getGenerations()).thenReturn(List.of("3세대", "4세대"));
++        mvc.perform(get("/api/v1/artists/filters")).andExpect(status().isOk())
++                .andExpect(jsonPath("$.data.generation").value(true))
++                .andExpect(jsonPath("$.data.generations[1]").value("4세대"));
++        mvc.perform(get("/api/v1/songs/filters")).andExpect(status().isOk())
++                .andExpect(jsonPath("$.data.ostOnly").value(true));
++    }
++}
++
+diff --git a/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterRepositoryTest.java b/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterRepositoryTest.java
+new file mode 100644
+index 0000000..da65521
+--- /dev/null
++++ b/K-wave/src/test/java/com/init/kwave/catalog/KPopFilterRepositoryTest.java
+@@ -0,0 +1,107 @@
++package com.init.kwave.catalog;
++
++import com.init.kwave.artist.entity.Artist;
++import com.init.kwave.artist.repository.ArtistRepository;
++import com.init.kwave.artist.repository.ArtistSpecifications;
++import com.init.kwave.content.entity.Category;
++import com.init.kwave.content.entity.Subcategory;
++import com.init.kwave.content.entity.Content;
++import com.init.kwave.content.entity.ContentRelation;
++import com.init.kwave.song.entity.Song;
++import com.init.kwave.song.repository.SongRepository;
++import com.init.kwave.song.repository.SongSpecifications;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
++import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
++import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Sort;
++import java.time.LocalDate;
++import static org.assertj.core.api.Assertions.assertThat;
++
++@DataJpaTest(properties = {
++    "spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop",
++    "spring.datasource.url=jdbc:h2:mem:filters;MODE=MySQL;DB_CLOSE_DELAY=-1",
++    "spring.datasource.driver-class-name=org.h2.Driver",
++    "spring.datasource.username=sa", "spring.datasource.password="
++})
++@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
++class KPopFilterRepositoryTest {
++    @Autowired TestEntityManager em;
++    @Autowired ArtistRepository artists;
++    @Autowired SongRepository songs;
++    private Subcategory subcategory;
++
++    private Content content() {
++        if (subcategory == null) {
++            Category category = em.persist(Category.builder().code("MUSIC").build());
++            subcategory = em.persist(Subcategory.builder().category(category).code("SONG").build());
++        }
++        return em.persist(Content.builder().subcategory(subcategory).build());
++    }
++
++    private Artist artist(String name, String generation, boolean group) {
++        return em.persist(Artist.builder().content(content()).name(name)
++                .externalArtistId(name).isGroup(group).generation(generation).build());
++    }
++
++    private Song song(Artist artist, String title, String genre) {
++        Song song = Song.builder().content(content()).artist(artist).title(title)
++                .externalMusicId(title).releaseDate(LocalDate.of(2020, 1, 1)).build();
++        song.updateGenreMood(genre, null, null, "calm", null);
++        return em.persist(song);
++    }
++
++    private void link(int source, Song song, String type) {
++        em.persist(ContentRelation.builder().sourceContentId(source)
++                .targetContentId(song.getContent().getContentId()).relationType(type).build());
++    }
++
++    @Test void generationFiltersBeforePagingAndIncludesClassifiedSoloIdols() {
++        artist("Group4", "4세대", true);
++        artist("Solo4", "4세대", false);
++        artist("Group3", "3세대", true);
++        artist("Singer", null, false);
++        em.flush();
++        var page = artists.findAll(ArtistSpecifications.hasGeneration("4세대"),
++                PageRequest.of(0, 1, Sort.by("artistId")));
++        assertThat(page.getTotalElements()).isEqualTo(2);
++        assertThat(page.getTotalPages()).isEqualTo(2);
++        assertThat(page.getContent()).extracting(Artist::getName).containsExactly("Group4");
++        assertThat(artists.findAll(ArtistSpecifications.hasGeneration("4세대"),
++                PageRequest.of(1, 1, Sort.by("artistId"))).getContent())
++                .extracting(Artist::getName).containsExactly("Solo4");
++        assertThat(artists.findGenerations()).containsExactly("3세대", "4세대");
++    }
++
++    @Test void ostRelationsFilterWithoutDuplicatesAndComposeWithGenreAndPopularity() {
++        Artist artist = artist("Artist", null, false);
++        Song ost = song(artist, "Theme", "Ballad");
++        ost.updateLastfmListeners(100);
++        Song second = song(artist, "Theme2", "Dance");
++        Song ordinary = song(artist, "Ordinary OST in title", "Ballad");
++        link(content().getContentId(), ost, "OST_OF");
++        link(content().getContentId(), ost, "OST_OF");
++        link(content().getContentId(), second, "OST_OF");
++        link(content().getContentId(), ordinary, "RELATED");
++        em.flush();
++        var all = songs.findAll(SongSpecifications.isOst(),
++                PageRequest.of(0, 1, Sort.by("songId")));
++        assertThat(all.getTotalElements()).isEqualTo(2);
++        assertThat(all.getTotalPages()).isEqualTo(2);
++        var combined = songs.findAll(SongSpecifications.isOst()
++                        .and(SongSpecifications.hasGenreMain("Ballad"))
++                        .and(SongSpecifications.hasMoodMain("calm"))
++                        .and(SongSpecifications.orderByPopularity(false)),
++                PageRequest.of(0, 24));
++        assertThat(combined.getTotalElements()).isEqualTo(1);
++        assertThat(combined.getContent()).extracting(Song::getTitle).containsExactly("Theme");
++    }
++
++    @Test void emptyResultsHaveZeroTotals() {
++        assertThat(songs.findAll(SongSpecifications.isOst(), PageRequest.of(0, 24)).getTotalElements()).isZero();
++        assertThat(artists.findAll(ArtistSpecifications.hasGeneration("5세대"), PageRequest.of(0, 24)).getTotalElements()).isZero();
++    }
++}
++
