@@ -3,6 +3,8 @@ import type { KWaveContent, Language } from '../types/content';
 
 export function clarifyCatalogAnswer(response: ChatApiResponse, message: string, language: Language, context: KWaveContent | null): ChatApiResponse {
   if (response.responseMode !== 'catalog' || !context || !['movie', 'drama'].includes(context.kind)) return response;
+  const asksStreaming = /\b(stream(?:ing)?|watch|netflix|ott)\b|어디서.*(?:보|봐)|配信|どこで.*見|哪里.*看|哪裡.*看/iu.test(message);
+  if (asksStreaming) return response;
   const asksLocation = /\b(places?|locations?|filming|where|settings?)\b|촬영지|촬영 장소|배경 장소|어디|ロケ地|撮影場所|場所|拍摄地|拍攝地|取景地|地点|地點/iu.test(message);
   if (!asksLocation) return response;
   const answers: Record<Language, string> = {
