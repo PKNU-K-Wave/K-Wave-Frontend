@@ -120,14 +120,12 @@ export function DetailModal({ item, allContent, onClose, onOpenRelated, onAsk, l
             <h3 className="text-sm font-black uppercase tracking-[0.14em] text-ink/45">{t("Why it connects")}</h3>
             <p className="mt-3 text-sm leading-6 text-ink/65">
               {t("K-Wave treats culture as a network. A drama can lead to an OST, a song can lead to an idol group, and a food page can lead to everyday Korean habits.")}</p>
-            {item.kind !== 'food' ? (
               <button
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-black text-white transition hover:bg-coral"
                 onClick={() => onAsk(item)}
               >
                 <MessageCircle className="h-4 w-4" />
                 {t("Ask about this")}</button>
-            ) : null}
           </aside>
         </div>
         </>}

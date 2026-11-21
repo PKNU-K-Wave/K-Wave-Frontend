@@ -22,7 +22,7 @@ function VideoCatalog({ language, onOpen, active }: { language: Language; onOpen
   const [page, setPage] = useSessionState('video-page', 0);
   const changeFilters = (next: SetStateAction<VideoFilters>) => { setPage(0); setFilters(next); };
   return <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-    <header className="mb-5 border-b border-ink/10 pb-5">
+    <header>
       <p className="text-xs font-black uppercase text-coral">{t("K-Video")}</p>
       <h1 className="mt-1 text-2xl font-black text-ink sm:text-3xl">{t("Movies and dramas")}</h1>
       <VideoFilterBar language={language} filters={filters} onChange={changeFilters} onReset={() => changeFilters(defaultFilters)} />

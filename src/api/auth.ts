@@ -88,7 +88,7 @@ export function initializeAuth(): Promise<void> {
       let pending: PendingGoogleLogin | null = null;
       try { pending = JSON.parse(sessionStorage.getItem(GOOGLE_LOGIN_STORAGE_KEY) || 'null'); } catch { /* Invalid pending state is rejected below. */ }
       try { sessionStorage.removeItem(GOOGLE_LOGIN_STORAGE_KEY); } catch { /* The pending-state check still rejects blocked storage. */ }
-      window.history.replaceState(null, '', '/');
+      window.history.replaceState(null, '', '/#/for-you');
       const version = generation;
       try {
         const code = googleCallbackCode(callbackUrl, pending);
@@ -97,7 +97,7 @@ export function initializeAuth(): Promise<void> {
         acceptSession(sessionFromTokens(tokens), true);
       } catch (error) { if (version === generation) forgetSession(error instanceof Error ? error.message : 'Sign-in failed.'); }
     } else if (isGoogleSignInEntry) {
-      window.history.replaceState(null, '', '/');
+      window.history.replaceState(null, '', '/#/for-you');
       try { startGoogleSignIn(); } catch (error) { forgetSession(error instanceof Error ? error.message : 'Sign-in failed.'); }
     } else if (savedSession()) {
       try {

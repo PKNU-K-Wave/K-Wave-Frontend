@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { BookOpen, RotateCcw, SlidersHorizontal, Soup, RefreshCw } from 'lucide-react';
+import { BookOpen, Soup, RefreshCw } from 'lucide-react';
 import { fetchFoodCategories, fetchFoodPage, fetchRecipePage, FOOD_PAGE_SIZE, RECIPE_DISH_TYPES, RECIPE_METHODS, type FoodCategory, type FoodFilters, type RecipeFilters, type ApiPage } from '../api/backend';
 import { ContentCard } from '../components/ContentCard';
 import { ContentSkeleton } from '../components/ContentSkeleton';
 import { Pagination } from '../components/Pagination';
+import { CatalogFilters, FilterChoices } from '../components/CatalogFilters';
 import { useSessionState } from '../hooks/useSessionState';
 import { useUI } from '../utils/ui';
 import type { FoodContent, KWaveContent, Language } from '../types/content';
@@ -17,7 +18,7 @@ export function FoodPage({ language, active, onOpen }: { language: Language; act
   const t = useUI();
   const [tab, setTab] = useSessionState<Tab>('food-tab', 'foods');
   return <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
-    <header className="border-b border-ink/10 pb-5">
+    <header>
       <p className="text-xs font-black uppercase text-coral">K-Food</p>
       <h1 className="mt-1 text-2xl font-black sm:text-3xl">{t('Korean food and recipes')}</h1>
       <div className="mt-5 flex gap-1" role="tablist" aria-label={t('K-Food catalog')}>
@@ -43,7 +44,6 @@ function FoodCatalog({ collection, language, active, onOpen }: { collection: Tab
   const [page, setPage] = useSessionState(`food-page:${collection}`, 0);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [categoryError, setCategoryError] = useState(false);
-  const [expanded, setExpanded] = useSessionState('food-diet-expanded', false);
   const [data, setData] = useState<ApiPage<FoodContent> | null>(null);
   const [loadedKey, setLoadedKey] = useState('');
   const [loading, setLoading] = useState(true);
@@ -72,33 +72,26 @@ function FoodCatalog({ collection, language, active, onOpen }: { collection: Tab
     return () => controller.abort();
   }, [active, collection, language, foods, recipes, page, key, retry, setPage]);
   const current = loadedKey === key ? data : null;
-  const changed = collection === 'foods' ? foods.category || foods.vegetarian || foods.exclude.length : recipes.dishType || recipes.cookingMethod;
+  const count = collection === 'foods' ? Number(Boolean(foods.category)) + Number(foods.vegetarian) + foods.exclude.length : Number(Boolean(recipes.dishType)) + Number(Boolean(recipes.cookingMethod));
   const reset = () => { setPage(0); if (collection === 'foods') setFoods(emptyFoods); else setRecipes(emptyRecipes); };
-  const selectClass = 'min-h-11 min-w-0 max-w-full rounded-lg border border-ink/10 bg-white px-3 text-sm';
-  return <section className="py-5" aria-busy={loading}>
+  return <section className="pb-5" aria-busy={loading}>
     <div ref={start} className="scroll-mt-44" />
-    <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-ink/10 pb-4">
+    <CatalogFilters count={count} onReset={reset}>
       {collection === 'foods' ? <>
-        <label className="flex min-w-0 max-w-full items-center gap-2 text-sm">{t('Category')}<select aria-label={t('Food category')} className={selectClass} value={foods.category} onChange={event => { setPage(0); setFoods({ ...foods, category: event.target.value }); }}>
-          <option value="">{t('All categories')}</option>
-          {foods.category && !categories.some(value => value.code === foods.category) && <option value={foods.category}>{foods.category}</option>}
-          {categories.map(value => <option key={value.code} value={value.code}>{value.name} ({value.foodCount})</option>)}
-        </select></label>
-        <button title={t('Dietary filters')} aria-label={t('Dietary filters')} aria-expanded={expanded} aria-controls="food-diet-filters" onClick={() => setExpanded(!expanded)} className={`grid h-11 w-11 place-items-center rounded-lg border ${expanded || foods.vegetarian || foods.exclude.length ? 'border-sea text-sea' : 'border-ink/10 text-ink/60'}`}><SlidersHorizontal className="h-4 w-4" /></button>
-      </> : <>
-        <label className="flex items-center gap-2 text-sm">{t('Dish type')}<select aria-label={t('Dish type')} className={selectClass} value={recipes.dishType} onChange={event => { setPage(0); setRecipes({ ...recipes, dishType: event.target.value }); }}><option value="">{t('All types')}</option>{RECIPE_DISH_TYPES.map(value => <option key={value} value={value}>{t(dishLabels[value])}</option>)}</select></label>
-        <label className="flex items-center gap-2 text-sm">{t('Method')}<select aria-label={t('Cooking method')} className={selectClass} value={recipes.cookingMethod} onChange={event => { setPage(0); setRecipes({ ...recipes, cookingMethod: event.target.value }); }}><option value="">{t('All methods')}</option>{RECIPE_METHODS.map(value => <option key={value} value={value}>{t(methodLabels[value])}</option>)}</select></label>
-      </>}
-      {Boolean(changed) && <button title={t('Reset filters')} aria-label={t('Reset filters')} onClick={reset} className="grid h-11 w-11 place-items-center text-ink/60"><RotateCcw className="h-4 w-4" /></button>}
-    </div>
-    {collection === 'foods' && expanded && <fieldset id="food-diet-filters" className="mb-5 border-b border-ink/10 pb-4">
-      <legend className="sr-only">{t('Dietary filters')}</legend>
-      <div className="flex flex-wrap gap-x-5 gap-y-1">
+      <fieldset>
+      <legend className="mb-2 text-sm font-bold text-ink/65">{t('Dietary filters')}</legend>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:flex sm:flex-wrap sm:gap-x-5">
         <label className="inline-flex min-h-11 items-center gap-2 text-sm"><input className="h-4 w-4 accent-sea" type="checkbox" checked={foods.vegetarian} onChange={event => { setPage(0); setFoods({ ...foods, vegetarian: event.target.checked }); }} />{t('Vegetarian')}</label>
         {(['PORK', 'BEEF', 'SEAFOOD'] as const).map(value => <label key={value} className="inline-flex min-h-11 items-center gap-2 text-sm"><input className="h-4 w-4 accent-sea" type="checkbox" checked={foods.exclude.includes(value)} onChange={event => { setPage(0); setFoods({ ...foods, exclude: event.target.checked ? [...foods.exclude, value] : foods.exclude.filter(item => item !== value) }); }} />{t({ PORK: 'Exclude pork', BEEF: 'Exclude beef', SEAFOOD: 'Exclude seafood' }[value])}</label>)}
       </div><p className="mt-2 text-xs leading-5 text-ink/55">{t('Ingredients and dietary labels may vary by recipe.')}</p>
-    </fieldset>}
-    {categoryError && <p role="status" className="mb-4 text-sm text-ink/60">{t('Could not load categories.')} <button className="min-h-11 font-bold text-sea" onClick={() => setRetry(value => value + 1)}>{t('Try again')}</button></p>}
+      </fieldset>
+      <FilterChoices label={t('Category')} value={foods.category} options={[{value:'',label:t('All categories')},...(foods.category && !categories.some(value => value.code === foods.category) ? [{value:foods.category,label:foods.category}] : []),...categories.map(value => ({value:value.code,label:`${value.name} (${value.foodCount.toLocaleString()})`}))]} onChange={value => {setPage(0);setFoods({...foods,category:value});}} />
+      {categoryError && <p role="status" className="text-sm text-ink/60">{t('Could not load categories.')} <button className="min-h-11 font-bold text-sea" onClick={() => setRetry(value => value + 1)}>{t('Try again')}</button></p>}
+      </> : <>
+        <FilterChoices label={t('Dish type')} value={recipes.dishType} options={[{value:'',label:t('All types')},...RECIPE_DISH_TYPES.map(value => ({value,label:t(dishLabels[value])}))]} onChange={value => {setPage(0);setRecipes({...recipes,dishType:value});}} />
+        <FilterChoices label={t('Cooking method')} value={recipes.cookingMethod} options={[{value:'',label:t('All methods')},...RECIPE_METHODS.map(value => ({value,label:t(methodLabels[value])}))]} onChange={value => {setPage(0);setRecipes({...recipes,cookingMethod:value});}} />
+      </>}
+    </CatalogFilters>
     {collection === 'recipes' && <p className="mb-4 text-sm text-ink/60">{t('Recipes are currently available in Korean.')}</p>}
     <p className="mb-4 text-sm text-ink/60" role="status">{current ? `${current.totalElements.toLocaleString()} ${t(collection === 'foods' ? 'foods' : 'recipes')}` : t(collection === 'foods' ? 'Foods' : 'Recipes')}</p>
     {failed ? <div role="alert" className="flex flex-wrap items-center gap-3 py-8"><span>{t('Could not load food content.')}</span><button className="inline-flex min-h-11 items-center gap-2 font-bold text-sea" onClick={() => setRetry(value => value + 1)}><RefreshCw className="h-4 w-4" />{t('Try again')}</button></div>

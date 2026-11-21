@@ -1,8 +1,31 @@
 import type { RecommendationPreference } from '../utils/recommendations';
 import { displayData } from '../utils/displayText';
+import { groupTrends, safeTrendUrl } from '../utils/trends';
+import type { TrendGroups } from '../types/trends';
 import type { FoodContent, FoodInfo, RecipeDetail, RecipeSummary, IdolContent, KWaveContent, Language, Person, SongContent, VideoContent } from '../types/content';
 
 const DEFAULT_API_BASE_URL = 'https://kwavepknu.me';
+export async function fetchTrendFeed(language: Language, signal?: AbortSignal) {
+  const raw = await request<{items: unknown[]; pastItems: unknown[]; songs?: {entries?: unknown[]}; netflix?: {entries?: unknown[]}}>('/api/v1/trends?' + new URLSearchParams({lang:language}), signal);
+  const charts = (['songs','netflix'] as const).flatMap(source => (raw[source]?.entries ?? []).flatMap(value => {
+    if (!value || typeof value !== 'object') return [];
+    const row = value as Record<string, unknown>;
+    const url = safeTrendUrl(row.externalUrl) ?? (source === 'netflix' ? 'https://www.netflix.com/tudum/top10/south-korea/tv' : null);
+    if (!url || typeof row.title !== 'string' || !Number.isSafeInteger(row.rank) || Number(row.rank) < 1) return [];
+    return [{key:`${source}:${row.rank}`,name:row.title,description:typeof row.subtitle === 'string' ? row.subtitle : '',url,source:source === 'songs' ? 'Apple Music Korea' : 'Netflix Korea',rank:Number(row.rank)}];
+  }));
+  charts.sort((a,b)=>a.rank-b.rank);
+  return {...groupTrends(raw),charts};
+}
+export async function fetchTrends(language: Language, signal?: AbortSignal): Promise<TrendGroups> {
+  return groupTrends(await request<unknown>(`/api/v1/trends?${new URLSearchParams({lang:language})}`,signal));
+}
+export async function fetchTrendReference(id: number, language: Language, signal?: AbortSignal): Promise<string | null> {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid trend item ID');
+  const detail = await request<{item:{trendItemId:number};referenceUrl?:string}>(`/api/v1/trends/items/${id}?${new URLSearchParams({lang:language})}`,signal);
+  if (detail.item?.trendItemId !== id) throw new Error('Invalid trend item detail');
+  return safeTrendUrl(detail.referenceUrl);
+}
 
 export type FoodCategory = { code: string; name: string; foodCount: number };
 export type FoodFilters = { category: string; vegetarian: boolean; exclude: string[] };
@@ -160,7 +183,7 @@ type VideoDetailResponse = VideoSummaryResponse & {
 
 export type RecommendationApiResponse = {
   id: string;
-  contentType: 'movie' | 'drama' | 'song' | 'idol';
+  contentType: 'movie' | 'drama' | 'song' | 'idol' | 'food' | 'recipe';
   domainId: number;
   contentId: number;
   title: string;
@@ -320,6 +343,7 @@ export function recommendationToContent(result: RecommendationApiResponse): KWav
   const base = { id: result.id, contentId: result.contentId, title: result.title, subtitle: result.subtitle, imageUrl: result.imageUrl || FALLBACK_IMAGE_URL, thumbnailUrl: result.thumbnailUrl || undefined, tags: result.tags, description: result.description };
   if (result.contentType === 'song') return { ...base, kind: 'song', artist: result.subtitle, album: '', releaseYear: 0, relatedIdolIds: [] };
   if (result.contentType === 'idol') return { ...base, kind: 'idol', instagramUrl: '', members: [], relatedSongIds: [] };
+  if (result.contentType === 'food' || result.contentType === 'recipe') return { ...base, kind: 'food', recipeId: result.contentType === 'recipe' ? result.domainId : undefined, ingredients: [], steps: [] };
   return { ...base, kind: result.contentType, year: 0, director: '', cast: [], ostIds: [], streaming: [], voteAverage: result.voteAverage ?? undefined, voteCount: result.voteCount ?? undefined };
 }
 

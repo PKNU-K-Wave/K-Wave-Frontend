@@ -53,6 +53,14 @@ function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState<KWaveContent | null>(null);
   const [visited, setVisited] = useState<View[]>([route.view]);
+  const [exploreRevision, setExploreRevision] = useState({ video: 0, kpop: 0, food: 0 });
+  const exploreCategory = (category: CategoryView) => {
+    const keys = category === 'video' ? ['video-page'] : category === 'kpop' ? ['kpop-page:songs', 'kpop-page:artists'] : ['food-page:foods', 'food-page:recipes'];
+    keys.forEach(key => writeState(key, 0));
+    writeState(`scroll:${category}`, 0);
+    setExploreRevision(current => ({ ...current, [category]: current[category] + 1 }));
+    setView(category);
+  };
   const itemCache = useRef(new Map<string, KWaveContent>());
   const completedLogin = useRef(false);
   const content = useKWaveContent(language);
@@ -60,10 +68,10 @@ function App() {
   allContentRef.current = content.allContent;
   const isSignedIn = auth.status === 'signed-in' && auth.session !== null;
   const userId = auth.session?.user.userId;
-  const isAuthView = view === 'login' || view === 'onboarding';
+  const isAuthView = view === 'login' || view === 'onboarding' || (view === 'recommendations' && !isSignedIn);
   const openLogin = () => { setLoginError(null); setIsChatOpen(false); setSelectedItem(null); setDetailRequest(null); setView('login'); setFromSearch(false); };
   const openForYou = () => {
-    setView(auth.status === 'loading' || isSignedIn ? 'recommendations' : 'login');
+    setView('recommendations');
     setLoginError(null); setIsChatOpen(false); setFromSearch(false);
   };
   const logout = () => { setView('home'); setFromSearch(false); setIsChatOpen(false); void signOut(); };
@@ -84,7 +92,7 @@ function App() {
       }
     } else if (auth.status === 'guest') {
       completedLogin.current = false;
-      if (view === 'recommendations' || view === 'onboarding') navigate({ ...route, view: 'login' }, true);
+      if (view === 'onboarding') navigate({ ...route, view: 'recommendations' }, true);
     }
   }, [auth.status, userId, auth.completedGoogleLogin, view, navigate, setView, route]);
   const openSearchItem = useCallback((item: KWaveContent) => {
@@ -184,11 +192,11 @@ function App() {
         <RecommendationsPage key={userId} userId={userId} content={content} language={language} onOpenRecommendation={openRecommendedItem} onLogout={logout} />
       ) : null}
 
-      {visited.includes('home') && <div hidden={view !== 'home'}><HomePage content={content} onOpen={openItem} onSelectCategory={setView} onTimeMachine={() => {setIsChatOpen(false);navigate({view:'timeline',year:readState('timeline-year-v2',2019),query:'',detail:null});}} /></div>}
+      {visited.includes('home') && <div hidden={view !== 'home'}><HomePage content={content} onOpen={openItem} onSelectCategory={exploreCategory} onTimeMachine={() => {setIsChatOpen(false);navigate({view:'timeline',year:readState('timeline-year-v2',2019),query:'',detail:null});}} /></div>}
       {visited.includes('timeline') && <div hidden={view !== 'timeline'}><TimeMachinePage language={language} year={route.view === 'timeline' ? route.year : undefined} active={view === 'timeline' && !route.detail} onYearChange={year => navigate({...route,year},true)} onHome={() => setView('home')} onOpen={openItem} /></div>}
-      {visited.includes('video') && <div hidden={view !== 'video'}><VideoPage language={language} active={view === 'video' && !route.detail} onOpen={openItem} /></div>}
-      {visited.includes('kpop') && <div hidden={view !== 'kpop'}><KPopPage onOpen={openItem} /></div>}
-      {visited.includes('food') && <div hidden={view !== 'food'}><FoodPage key={language} language={language} active={view === 'food' && !route.detail} onOpen={openItem} /></div>}
+      {visited.includes('video') && <div hidden={view !== 'video'}><VideoPage key={exploreRevision.video} language={language} active={view === 'video' && !route.detail} onOpen={openItem} /></div>}
+      {visited.includes('kpop') && <div hidden={view !== 'kpop'}><KPopPage key={exploreRevision.kpop} onOpen={openItem} /></div>}
+      {visited.includes('food') && <div hidden={view !== 'food'}><FoodPage key={`${language}:${exploreRevision.food}`} language={language} active={view === 'food' && !route.detail} onOpen={openItem} /></div>}
 
       <DetailModal
         key={selectedItem?.id ?? 'closed'}
