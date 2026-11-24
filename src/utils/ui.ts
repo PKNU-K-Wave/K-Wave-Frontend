@@ -3,6 +3,8 @@ import type { Language } from '../types/content';
 
 export const UIContext = createContext<Language>('en');
 const translations: Record<string, [string, string]> = {
+  'Loading tastes...': ['正在加载偏好选项…', '好みの選択肢を読み込み中…'],
+  'Could not load taste options.': ['无法加载偏好选项。', '好みの選択肢を読み込めませんでした。'],
   'Some details could not be loaded.': ['部分详情未能加载。', '一部の詳細を読み込めませんでした。'],
   'Rising': ['热度上升', '急上昇'],
   'News article': ['新闻报道', 'ニュース記事'], 'Song': ['歌曲', '楽曲'], 'Video': ['影视', '映像作品'],

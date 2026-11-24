@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import ts from 'typescript';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { loadTypescript } from './load-typescript.mjs';
 
 async function moduleFrom(file) {
   const source = fs.readFileSync(new URL(file, import.meta.url), 'utf8');
@@ -9,7 +10,7 @@ async function moduleFrom(file) {
   return import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'));
 }
 const auth = await moduleFrom('../src/utils/authSession.ts');
-const preferences = await moduleFrom('../src/utils/preferenceStorage.ts');
+const preferences = await loadTypescript('../src/utils/preferenceStorage.ts');
 const now = 1_000_000;
 const jwt = claims => ['header', Buffer.from(JSON.stringify(claims)).toString('base64url'), 'signature'].join('.');
 
