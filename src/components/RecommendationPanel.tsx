@@ -6,6 +6,7 @@ import { ContentCard } from './ContentCard';
 import type { ContentKind, KWaveContent } from '../types/content';
 import { useRecommendationPreference } from '../hooks/useRecommendationPreference';
 import { withAccessToken } from '../api/auth';
+import { usePresentationCards } from '../hooks/usePresentationCards';
 import {
   calculateRecommendations,
   defaultPreference,
@@ -49,6 +50,7 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
   const [serverRecommendations, setServerRecommendations] = useState<RecommendedContent[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const recommendations = serverRecommendations ?? localRecommendations;
+  const presentation = usePresentationCards(recommendations.map(result => result.item), language);
 
   useEffect(() => {
     if (preference.categories.length === 0) {
@@ -63,7 +65,7 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
     setFailed(false);
 
     withAccessToken(token => fetchRecommendations(preference, language, controller.signal, token))
-      .then((response) => mapRecommendations(response, content))
+      .then((response) => mapRecommendations(response))
       .then((mappedRecommendations) => {
         if (!controller.signal.aborted) {
           setServerRecommendations([...mappedRecommendations, ...localRecommendations.filter(result => result.item.kind === 'food')].slice(0, 4));
@@ -114,8 +116,8 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
           {t("Reset")}</button>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[18rem_1fr]">
-        <div className="space-y-5">
+      <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-5">
           <PreferenceGroup title={t("Category")}>
             {preferenceOptions.categories.map((option) => {
               const isActive = option.kinds.some((kind) => preference.categories.includes(kind));
@@ -144,22 +146,11 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
         </div>
 
         <div
-          className={`grid gap-4 transition sm:grid-cols-2 xl:grid-cols-4 ${isLoading ? 'opacity-70' : ''}`}
-          aria-busy={isLoading}
+          className="grid min-w-0 content-start gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          aria-busy={isLoading || presentation.loading}
         >
-          {recommendations.length > 0 ? (
-            recommendations.map((recommendation) => (
-              <div key={recommendation.item.id} className="min-w-0">
-                <ContentCard item={recommendation.item} onOpen={onOpen} language={language} />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {recommendation.reasons.map((reason) => (
-                    <span key={reason} className="rounded-full bg-sea/10 px-2.5 py-1 text-[11px] font-black text-sea">
-                      {reason}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))
+          {isLoading || presentation.loading ? <p role="status" className="text-sm text-ink/60 sm:col-span-2 xl:col-span-4">{t('Finding matching titles...')}</p> : presentation.items.length > 0 ? (
+            presentation.items.map(item => <ContentCard key={item.id} item={item} onOpen={onOpen} language={language} />)
           ) : (
             <div className="rounded-lg border border-dashed border-ink/15 bg-ink/5 p-5 sm:col-span-2 xl:col-span-4">
               <p className="text-sm font-black text-ink">{t("No picks yet")}</p>
@@ -169,32 +160,15 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
           )}
         </div>
       </div>
+      {presentation.failed && <p role="status" className="mt-3 text-sm text-ink/60">{t('Some details could not be loaded.')} <button className="min-h-11 font-bold text-sea" onClick={presentation.retry}>{t('Retry')}</button></p>}
     </section>
   );
 }
 
 function mapRecommendations(
   recommendations: RecommendationApiResponse[],
-  content: KWaveContent[],
 ): RecommendedContent[] {
-  return recommendations.flatMap((recommendation) => {
-    const item =
-      content.find((candidate) => candidate.id === recommendation.id) ??
-      content.find(
-        (candidate) =>
-          candidate.contentId === recommendation.contentId && candidate.kind === recommendation.contentType,
-      ) ?? recommendationToContent(recommendation);
-
-    return item
-      ? [
-          {
-            item: { ...item, title: recommendation.title, subtitle: recommendation.subtitle, description: recommendation.description },
-            score: recommendation.score,
-            reasons: recommendation.reasons,
-          },
-        ]
-      : [];
-  });
+  return recommendations.map(recommendation => ({ item: recommendationToContent(recommendation), score: recommendation.score, reasons: recommendation.reasons }));
 }
 
 function PreferenceGroup({ title, children }: { title: string; children: React.ReactNode }) {
@@ -212,7 +186,7 @@ function Chip({ children, isActive, onClick }: { children: React.ReactNode; isAc
   return (
     <button
       aria-pressed={isActive}
-      className={`h-9 rounded-full px-3 text-xs font-black transition ${
+      className={`min-h-9 max-w-full break-words rounded-full px-3 py-2 text-left text-xs font-black transition ${
         isActive ? 'bg-ink text-white' : 'bg-ink/5 text-ink/55 hover:bg-white hover:text-ink hover:ring-1 hover:ring-ink/10'
       }`}
       onClick={onClick}

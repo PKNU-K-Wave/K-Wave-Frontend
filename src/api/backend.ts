@@ -392,7 +392,7 @@ export function recommendationToContent(result: RecommendationApiResponse): KWav
   return { ...base, kind: result.contentType, year: 0, director: '', cast: [], ostIds: [], streaming: [], voteAverage: result.voteAverage ?? undefined, voteCount: result.voteCount ?? undefined };
 }
 
-export function fetchContentDetail(item: KWaveContent, language: Language, signal: AbortSignal): Promise<KWaveContent> {
+export function fetchContentDetail(item: KWaveContent, language: Language, signal: AbortSignal, cardOnly = false): Promise<KWaveContent> {
   if (item.kind === 'food') {
     const recipeMatch = /^food-recipe-(\d+)$/.exec(item.id);
     if (recipeMatch) return fetchRecipeDetail(Number(recipeMatch[1]), language, signal).then(recipe => ({ ...mapRecipeToContent(recipe, language), recipe }));
@@ -401,13 +401,13 @@ export function fetchContentDetail(item: KWaveContent, language: Language, signa
     return request<FoodResponse>(`/api/v1/foods/${foodMatch[1]}?${new URLSearchParams({ lang: language })}`, signal).then(mapFoodToContent);
   }
   if (/^(song|artist)-content-\d+$/.test(item.id) && item.contentId) {
-    return resolvePersonalMusicDetail(item, item.contentId, language, signal);
+    return resolvePersonalMusicDetail(item, item.contentId, language, signal, cardOnly);
   }
   const domainId = Number(item.id.split('-').pop());
   if (!Number.isSafeInteger(domainId) || domainId <= 0) return Promise.resolve(item);
-  return fetchSearchDetail({ resultType: item.kind === 'song' ? 'SONG' : item.kind === 'idol' ? 'ARTIST' : 'VIDEO', domainId, contentId: item.contentId ?? domainId, subtype: null, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl }, language, signal);
+  return fetchSearchDetail({ resultType: item.kind === 'song' ? 'SONG' : item.kind === 'idol' ? 'ARTIST' : 'VIDEO', domainId, contentId: item.contentId ?? domainId, subtype: null, title: item.title, subtitle: item.subtitle, imageUrl: item.imageUrl }, language, signal, cardOnly);
 }
-async function resolvePersonalMusicDetail(item: KWaveContent, contentId: number, language: Language, signal: AbortSignal) {
+async function resolvePersonalMusicDetail(item: KWaveContent, contentId: number, language: Language, signal: AbortSignal, cardOnly: boolean) {
   const type = item.kind === 'song' ? 'SONG' : 'ARTIST';
   const canonical = await request<{ title: string }>(`/api/v1/contents/${contentId}?lang=ko`, signal);
   for (const title of new Set([item.title, canonical.title].filter(Boolean))) {
@@ -416,7 +416,7 @@ async function resolvePersonalMusicDetail(item: KWaveContent, contentId: number,
     for (let page = 0; page < Math.min(first.totalPages, 10); page++) {
       if (page) results = (await searchContent(title, language, type, page, signal)).content;
       const match = results.find(result => result.contentId === contentId);
-      if (match) return fetchSearchDetail(match, language, signal);
+      if (match) return fetchSearchDetail(match, language, signal, cardOnly);
     }
   }
   throw new Error('Could not resolve the recommended title.');
@@ -439,10 +439,11 @@ export function searchContent(q: string, language: Language, type: SearchType | 
   return request<ApiPage<SearchResult>>(`/api/v1/search?${params}`, signal);
 }
 
-export async function fetchSearchDetail(result: SearchResult, language: Language, signal: AbortSignal): Promise<KWaveContent> {
+export async function fetchSearchDetail(result: SearchResult, language: Language, signal: AbortSignal, cardOnly = false): Promise<KWaveContent> {
   if (result.resultType === 'VIDEO') return fetchVideoDetailContent(result.contentId, language, signal);
   if (result.resultType === 'ARTIST') {
     const artist = await request<ArtistResponse>(`/api/v1/artists/${result.domainId}?lang=${language}`, signal);
+    if (cardOnly) return mapArtistToIdol(artist, [], []);
     const [members, songs] = await Promise.all([
       artist.isGroup ? request<MemberResponse[]>(`/api/v1/artists/${result.domainId}/members`, signal) : Promise.resolve([]),
       request<SongResponse[]>(`/api/v1/artists/${result.domainId}/songs`, signal),
@@ -450,6 +451,7 @@ export async function fetchSearchDetail(result: SearchResult, language: Language
     return mapArtistToIdol(artist, members, songs);
   }
   const song = await request<SongResponse>(`/api/v1/songs/${result.domainId}?lang=${language}`, signal);
+  if (cardOnly) return mapSongToContent(song);
   const artist = song.artistId
     ? await request<ArtistResponse>(`/api/v1/artists/${song.artistId}`, signal)
     : { artistId: 0, name: song.artistName || '', isGroup: false };

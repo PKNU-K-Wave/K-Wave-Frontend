@@ -129,7 +129,7 @@ function App() {
 
   const openRecommendedItem = (item: KWaveContent) => {
     itemCache.current.set(item.id, item);
-    navigate({ view: getCategoryView(item), query: '', detail: item.id, contentId: item.contentId });
+    navigate({ view: 'recommendations', query: '', detail: item.id, contentId: item.contentId });
   };
 
   const askAboutItem = (item: KWaveContent) => {
