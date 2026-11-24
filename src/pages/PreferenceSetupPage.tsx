@@ -1,6 +1,6 @@
-import { useUI } from "../utils/ui";
+import { UIContext, useUI } from "../utils/ui";
 import { Check, Clapperboard, Music2, Soup } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { fetchRecommendationTags } from '../api/backend';
 import { withAccessToken } from '../api/auth';
 import { getAvailableTags, getCategoryKinds, preferenceOptions, type RecommendationPreference } from '../utils/recommendations';
@@ -10,23 +10,23 @@ const categoryIcons = { video: Clapperboard, kpop: Music2, food: Soup };
 
 export function PreferenceSetupPage({ userId, onComplete, onSkip }: { userId: number; onComplete: () => void; onSkip: () => void }) {
   const t = useUI();
+  const language = useContext(UIContext);
   const [preference, setPreference] = useState<RecommendationPreference>({ categories: [], tags: [] });
   const [serverTags, setServerTags] = useState<string[] | null>(null);
   const [saveError, setSaveError] = useState(false);
-  const tags = serverTags ?? getAvailableTags(preference.categories);
+  const tags = [...new Set([...(serverTags ?? getAvailableTags(preference.categories)), ...preference.tags])];
   useEffect(() => {
     const controller = new AbortController();
     setServerTags(null);
     if (preference.categories.some(category => category !== 'food')) {
-      void withAccessToken(token => fetchRecommendationTags(preference.categories, controller.signal, token)).then(values => {
+      void withAccessToken(token => fetchRecommendationTags(preference.categories, language, controller.signal, token)).then(values => {
         if (controller.signal.aborted) return;
         const available = preference.categories.includes('food') ? [...new Set([...values, ...getAvailableTags(['food'])])] : values;
         setServerTags(available);
-        setPreference(current => ({ ...current, tags: current.tags.filter(tag => available.includes(tag)) }));
       }).catch(() => undefined);
     }
     return () => controller.abort();
-  }, [preference.categories]);
+  }, [preference.categories, language]);
 
   return <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
     <p className="text-xs font-bold uppercase text-coral">{t("For You")}</p>

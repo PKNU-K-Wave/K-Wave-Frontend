@@ -62,7 +62,7 @@ function FoodCatalog({ collection, language, active, onOpen }: { collection: Tab
     if (!active) return;
     const controller = new AbortController();
     setLoading(true); setFailed(false);
-    const request = collection === 'foods' ? fetchFoodPage(language, foods, page, controller.signal) : fetchRecipePage(recipes, page, controller.signal);
+    const request = collection === 'foods' ? fetchFoodPage(language, foods, page, controller.signal) : fetchRecipePage(recipes, page, language, controller.signal);
     request.then(result => {
       if (controller.signal.aborted) return;
       const last = Math.max(0, Math.min(result.totalPages, Math.floor(10_000 / FOOD_PAGE_SIZE) + 1) - 1);
@@ -92,7 +92,6 @@ function FoodCatalog({ collection, language, active, onOpen }: { collection: Tab
         <FilterChoices label={t('Cooking method')} value={recipes.cookingMethod} options={[{value:'',label:t('All methods')},...RECIPE_METHODS.map(value => ({value,label:t(methodLabels[value])}))]} onChange={value => {setPage(0);setRecipes({...recipes,cookingMethod:value});}} />
       </>}
     </CatalogFilters>
-    {collection === 'recipes' && <p className="mb-4 text-sm text-ink/60">{t('Recipes are currently available in Korean.')}</p>}
     <p className="mb-4 text-sm text-ink/60" role="status">{current ? `${current.totalElements.toLocaleString()} ${t(collection === 'foods' ? 'foods' : 'recipes')}` : t(collection === 'foods' ? 'Foods' : 'Recipes')}</p>
     {failed ? <div role="alert" className="flex flex-wrap items-center gap-3 py-8"><span>{t('Could not load food content.')}</span><button className="inline-flex min-h-11 items-center gap-2 font-bold text-sea" onClick={() => setRetry(value => value + 1)}><RefreshCw className="h-4 w-4" />{t('Try again')}</button></div>
       : loading || !current ? <ContentSkeleton />

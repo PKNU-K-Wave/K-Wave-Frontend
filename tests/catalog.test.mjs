@@ -174,14 +174,16 @@ test('recipes have distinct deep-link IDs and never masquerade as central food I
     globalThis.fetch = async url => {
       const parsed = new URL(url);
       if (parsed.pathname === '/api/v1/recipes') {
+        assert.equal(parsed.searchParams.get('lang'), 'en');
         assert.equal(parsed.searchParams.get('dishType'), 'SIDE');
         assert.equal(parsed.searchParams.get('cookingMethod'), 'STEAM');
         return { ok: true, json: async () => ({ success: true, data: { content: [{ recipeId: 1, name: 'Recipe', foodId: 17158 }], number: 0, totalPages: 1, totalElements: 1 } }) };
       }
       assert.equal(parsed.pathname, '/api/v1/recipes/1');
+      assert.equal(parsed.searchParams.get('lang'), 'en');
       return { ok: true, json: async () => ({ success: true, data: { recipeId: 1, name: 'Recipe', ingredients: 'tofu', steps: [{ order: 1, description: 'Steam' }] } }) };
     };
-    const result = await api.fetchRecipePage({ dishType: 'SIDE', cookingMethod: 'STEAM' }, 0);
+    const result = await api.fetchRecipePage({ dishType: 'SIDE', cookingMethod: 'STEAM' }, 0, 'en');
     assert.equal(result.content[0].id, 'food-recipe-1');
     assert.equal(result.content[0].contentId, undefined);
     const detail = await api.fetchContentDetail({ ...result.content[0], recipeId: undefined }, 'en', new AbortController().signal);

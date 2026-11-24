@@ -47,7 +47,9 @@ by the operator unless that access is explicitly supplied.
 
 ## Known boundaries
 
-Saved collections currently use account-scoped browser storage. Do not advertise
-cross-device saved-content sync until the authenticated favorites API is deployed,
-integrated and tested. Missing content translations are not frontend translations.
+Signed-in favorites use the authenticated server API and are loaded on sign-in.
+Verify add/remove and reload in two signed-in browsers before reporting cross-device
+sync as tested. Legacy favorites with a content ID are migrated once where possible;
+recipes are not server favorites. Explicit taste preferences remain browser-local.
+Missing content translations are not frontend translations.
 Consult FRONTEND_RELEASE_CHECK.md and PERSONALIZATION.md for verification limits.

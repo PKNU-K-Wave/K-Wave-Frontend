@@ -64,6 +64,7 @@ export type IdolContent = BaseContent & {
   connectedItems?: KWaveContent[];
   debutYear?: number;
   generation?: string;
+  generationName?: string;
   agency?: string;
   fandomName?: string;
   fandomCulture?: string;
@@ -82,7 +83,7 @@ export type FoodContent = BaseContent & {
 };
 
 export type Nutrition = { servingSizeG?: number | null; caloriesKcal?: number | null; carbohydrateG?: number | null; proteinG?: number | null; fatG?: number | null; sodiumMg?: number | null };
-export type RecipeSummary = { recipeId: number; name: string; foodId?: number | null; dishType?: string | null; cookingMethod?: string | null; caloriesKcal?: number | null; imageUrl?: string | null };
+export type RecipeSummary = { recipeId: number; name: string; resolvedLanguage?: string; foodId?: number | null; dishType?: string | null; dishTypeName?: string | null; cookingMethod?: string | null; cookingMethodName?: string | null; caloriesKcal?: number | null; imageUrl?: string | null };
 export type RecipeDetail = RecipeSummary & Nutrition & { ingredients?: string | null; tip?: string | null; steps: Array<{ order: number; description: string; imageUrl?: string | null }> };
 export type FoodInfo = Nutrition & { resolvedLanguage?: string; nameKo?: string; nameRomanized?: string; categoryCode?: string; categoryName?: string; spiceLevel?: number | null; isVegetarian?: boolean | null; containsPork?: boolean | null; containsBeef?: boolean | null; containsSeafood?: boolean | null; taste?: string | null; howToEat?: string | null; imageAuthor?: string | null; imageLicense?: string | null; imageSourceUrl?: string | null; recipes?: RecipeSummary[] };
 

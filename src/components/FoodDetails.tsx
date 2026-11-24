@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { fetchRecipeDetail } from '../api/backend';
 import type { FoodContent, Nutrition, RecipeDetail } from '../types/content';
-import { useUI } from '../utils/ui';
+import { UIContext, useUI } from '../utils/ui';
 import { ContentImage } from './ContentImage';
 import { RecipePicker } from './RecipePicker';
 
@@ -11,6 +11,7 @@ function safeLink(value?: string | null) {
 }
 export function FoodDetails({ item }: { item: FoodContent }) {
   const t = useUI();
+  const language = useContext(UIContext);
   const info = item.foodInfo;
   const [selected, setSelected] = useState('');
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
@@ -22,9 +23,9 @@ export function FoodDetails({ item }: { item: FoodContent }) {
     if (!selected) { setLoading(false); return; }
     const controller = new AbortController();
     setLoading(true);
-    fetchRecipeDetail(Number(selected), controller.signal).then(result => { if (!controller.signal.aborted) setRecipe(result); }).catch(() => { if (!controller.signal.aborted) setFailed(true); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    fetchRecipeDetail(Number(selected), language, controller.signal).then(result => { if (!controller.signal.aborted) setRecipe(result); }).catch(() => { if (!controller.signal.aborted) setFailed(true); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [selected, retry]);
+  }, [selected, language, retry]);
   const source = safeLink(info?.imageSourceUrl);
   return <div className="space-y-7">
     {info && <>
@@ -54,8 +55,8 @@ export function FoodDetails({ item }: { item: FoodContent }) {
 }
 function RecipeView({ recipe }: { recipe: RecipeDetail }) {
   const t = useUI();
-  return <article lang="ko" className="space-y-5 border-t border-ink/10 pt-5">
-    <div><p className="text-xs font-semibold text-sea">{t('Recipes are currently available in Korean.')}</p><h3 className="mt-2 break-words text-xl font-black">{recipe.name}</h3></div>
+  return <article lang={recipe.resolvedLanguage} className="space-y-5 border-t border-ink/10 pt-5">
+    <h3 className="break-words text-xl font-black">{recipe.name}</h3>
     {recipe.ingredients && <section><h4 className="font-bold">{t('Ingredients')}</h4><p className="mt-2 whitespace-pre-line text-sm leading-7 text-ink/70">{recipe.ingredients}</p></section>}
     <section><h4 className="font-bold">{t('Cooking steps')}</h4>
       {recipe.steps?.length ? <ol className="mt-3 divide-y divide-ink/10">{recipe.steps.map((step, index) => <li key={`${step.order}:${index}`} className="flex min-w-0 gap-3 py-4">

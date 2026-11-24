@@ -5,16 +5,14 @@
 - A still-valid access token is retained in sessionStorage for same-tab reloads. Refresh tokens remain in the existing account session storage and are rotated through the backend on expiry/new-tab restoration.
 - Temporary refresh server/network failures do not discard a valid in-memory access token. Failed restoration with a retained refresh token offers an explicit retry instead of requiring Google consent again. Invalid/expired tokens still require sign-in.
 - Cards and detail dialogs share a heart control. Guests are asked to sign in without losing access to public browsing.
-- Saved snapshots are isolated by backend JWT userId. Storage errors are shown, not silently reported as successful. Large related-content lists are omitted from snapshots and fetched on opening details.
+- Server favorites are isolated by the authenticated account and use the shared content ID for add/remove. Detail links retain domain IDs where available. Previously stored server-eligible favorites are migrated after the first successful signed-in read; successful entries are removed from legacy storage. Local-only recipes have no server heart.
 - For You separates saved titles from similar picks, with K-Video / K-POP / K-Food tabs, bounded initial saved rendering, counts and empty states.
-- Genre scoring counts matching genres across saved titles, ranks candidates by that frequency, excludes saved IDs and never mixes category groups. Recognized Korean video genre labels normalize to English. Category/Group/Solo labels are not treated as genres; missing genre data produces an honest empty state.
-- Video candidates use the existing backend recommendation endpoint, limit 20, and loaded catalog titles. Music candidates use at most three song pages (72 tracks on the current paginated contract), plus loaded music/artists. Food currently uses sample recipes and shared food tags. This is a bounded discovery pool, not a full-catalog or machine-learning recommender.
+- Movie, drama, song and artist picks come from the authenticated `/api/v1/recommendations/me` endpoint. The frontend retains server ordering and renders the returned reason; it does not calculate the taste/exploration ratio.
+- Food stays on local shared-tag matching against loaded food candidates. Explicit taste settings use the tag-based recommendation API and remain browser-local.
 
 ## Backend boundary
 
-Backend develop aedb58babaf6dd715215fb1e4a9358f6d347f656 was inspected. It provides OAuth token issuance and reissue, but no saved-content/preferences persistence endpoint. Saves here are **per account on this browser**, not cross-device DB synchronization. A production saved-content API needs authenticated user identity, a unique user/content relation, listing by category with paging, add/remove operations, and appropriate authorization.
-
-The existing backend music recommendation response does not include music genres in its candidate tags; the frontend therefore uses actual song genre metadata from catalog pages instead of treating Group/Solo as genre recommendations. Old deployments or missing source genres can still limit results.
+The selected language is sent to the tag lookup, tag-based recommendation and personal recommendation endpoints. Tag responses do not overwrite stored selections on language changes. Music recommendations without a domain ID resolve through catalog search and match by shared content ID, never by title alone.
 
 ## Verification boundary
 

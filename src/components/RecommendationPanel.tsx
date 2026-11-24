@@ -1,5 +1,5 @@
-import { useUI } from "../utils/ui";
-import { useEffect, useMemo, useState } from 'react';
+import { UIContext, useUI } from "../utils/ui";
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { RotateCcw, Sparkles } from 'lucide-react';
 import { fetchRecommendations, fetchRecommendationTags, recommendationToContent, type RecommendationApiResponse } from '../api/backend';
 import { ContentCard } from './ContentCard';
@@ -24,24 +24,24 @@ type RecommendationPanelProps = {
 
 export function RecommendationPanel({ content, onOpen, userId }: RecommendationPanelProps) {
   const t = useUI();
+  const language = useContext(UIContext);
   const [preference, setPreference, saved] = useRecommendationPreference(userId);
   const [serverTags, setServerTags] = useState<string[] | null>(null);
-  const availableTags = serverTags ?? getAvailableTags(preference.categories);
+  const availableTags = [...new Set([...(serverTags ?? getAvailableTags(preference.categories)), ...preference.tags])];
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     setServerTags(null);
     if (preference.categories.some(kind => kind !== 'food')) {
-      withAccessToken(token => fetchRecommendationTags(preference.categories, controller.signal, token)).then(tags => {
+      withAccessToken(token => fetchRecommendationTags(preference.categories, language, controller.signal, token)).then(tags => {
         if (!controller.signal.aborted) {
           const allowed = preference.categories.includes('food') ? [...new Set([...tags, ...getAvailableTags(['food'])])] : tags;
           setServerTags(allowed);
-          setPreference(current => current.tags.some(tag => !allowed.includes(tag)) ? { ...current, tags: current.tags.filter(tag => allowed.includes(tag)) } : current);
         }
       }).catch(() => undefined);
     }
     return () => controller.abort();
-  }, [preference.categories, setPreference]);
+  }, [preference.categories, language]);
   const localRecommendations = useMemo(
     () => calculateRecommendations(content, preference, 4),
     [content, preference],
@@ -62,7 +62,7 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
     setServerRecommendations([]);
     setFailed(false);
 
-    withAccessToken(token => fetchRecommendations(preference, controller.signal, token))
+    withAccessToken(token => fetchRecommendations(preference, language, controller.signal, token))
       .then((response) => mapRecommendations(response, content))
       .then((mappedRecommendations) => {
         if (!controller.signal.aborted) {
@@ -82,19 +82,11 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
       });
 
     return () => controller.abort();
-  }, [content, preference, localRecommendations]);
+  }, [content, preference, localRecommendations, language]);
 
   const toggleCategory = (categoryValue: string) => {
     const kinds = getCategoryKinds(categoryValue);
-    setPreference((current) => {
-      const nextPreference = toggleKinds(current, kinds);
-      const nextAvailableTags = getAvailableTags(nextPreference.categories);
-
-      return {
-        ...nextPreference,
-        tags: nextPreference.tags.filter((tag) => nextAvailableTags.includes(tag) && nextPreference.categories.length > 0),
-      };
-    });
+    setPreference(current => toggleKinds(current, kinds));
   };
 
   const toggleTag = (tag: string) => {
@@ -158,7 +150,7 @@ export function RecommendationPanel({ content, onOpen, userId }: RecommendationP
           {recommendations.length > 0 ? (
             recommendations.map((recommendation) => (
               <div key={recommendation.item.id} className="min-w-0">
-                <ContentCard item={recommendation.item} onOpen={onOpen} />
+                <ContentCard item={recommendation.item} onOpen={onOpen} language={language} />
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {recommendation.reasons.map((reason) => (
                     <span key={reason} className="rounded-full bg-sea/10 px-2.5 py-1 text-[11px] font-black text-sea">
@@ -196,7 +188,7 @@ function mapRecommendations(
     return item
       ? [
           {
-            item,
+            item: { ...item, title: recommendation.title, subtitle: recommendation.subtitle, description: recommendation.description },
             score: recommendation.score,
             reasons: recommendation.reasons,
           },

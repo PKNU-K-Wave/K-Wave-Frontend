@@ -231,7 +231,7 @@ function IdolDetails({
   const t = useUI();
   const facts: Array<[string, string]> = [
     ['Debut', item.debutYear ? String(item.debutYear) : ''],
-    ['Generation', item.generation || ''],
+    ['Generation', item.generationName || item.generation || ''],
     ['Agency', item.agency || ''],
     ['Fandom', item.fandomName || ''],
     ['Tracks', item.trackTotal != null ? item.trackTotal.toLocaleString() : ''],
