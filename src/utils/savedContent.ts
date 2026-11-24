@@ -6,6 +6,9 @@ export function collectionOf(item: KWaveContent): Collection {
   return item.kind === 'movie' || item.kind === 'drama' ? 'video' : item.kind === 'food' ? 'food' : 'kpop';
 }
 export const savedKey = (userId: number) => `kwave-saved:user:${userId}`;
+export function favoriteId(item: KWaveContent): number | undefined {
+  return !item.id.startsWith('food-recipe-') && typeof item.contentId === 'number' && Number.isSafeInteger(item.contentId) && item.contentId > 0 ? item.contentId : undefined;
+}
 export function readSaved(userId: number, storage?: Pick<Storage, 'getItem'>): KWaveContent[] {
   try {
     const items: unknown = displayData(JSON.parse((storage ?? localStorage).getItem(savedKey(userId)) || '[]'));

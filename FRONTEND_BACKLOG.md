@@ -7,7 +7,9 @@ restoration, save continuation, shared UI localization, detail accessibility,
 chat placement, home ordering, compact search/recent searches, image placeholders
 and loading/error states were implemented and tested. See FRONTEND_RELEASE_CHECK.md
 for the verified scope and remaining backend/data limitations. Recently viewed,
-recipe tools, server favorites sync and full-catalog personalization remain future work.
+recipe tools remain future work. Server favorites and recommendations for movies,
+dramas, songs and artists are integrated; logged-in cross-browser QA is tracked
+separately. Food retains local similarity matching.
 
 ## Priority
 

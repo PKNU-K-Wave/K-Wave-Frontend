@@ -12,6 +12,6 @@ test('chat food and recipe cards retain independent IDs and hydrate the right ro
   await api.fetchContentDetail(recipe,'en',new AbortController().signal);
   const food=api.recommendationToContent({...base,id:'food-17408',domainId:17408,contentType:'food'});
   await api.fetchContentDetail(food,'en',new AbortController().signal);
-  assert.ok(paths[0].endsWith('/api/v1/recipes/7'));assert.ok(paths[1].includes('/api/v1/foods/17408?lang=en'));
+  assert.ok(paths[0].endsWith('/api/v1/recipes/7?lang=en'));assert.ok(paths[1].includes('/api/v1/foods/17408?lang=en'));
  }finally{globalThis.fetch=original;}
 });
