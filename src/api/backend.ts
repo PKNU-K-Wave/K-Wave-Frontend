@@ -158,13 +158,14 @@ type VideoSummaryResponse = {
   posterThumbUrl?: string | null;
   releaseDate?: string | null;
   director?: string | null;
+  originalDirector?: string | null;
   posterUrl?: string | null;
   genres?: string[] | null;
   relatedContentIds?: number[] | null;
   relatedCount?: number | null;
   ostCount?: number | null;
   relationType?: string;
-  sharedActors?: Array<{ actorId: number; name: string }>;
+  sharedActors?: Array<{ actorId: number; name: string; originalName?: string | null }>;
 };
 
 type VideoDetailResponse = VideoSummaryResponse & {
@@ -177,9 +178,11 @@ type VideoDetailResponse = VideoSummaryResponse & {
   actors?: Array<{
     actorId: number;
     name: string;
+    originalName?: string | null;
     profileUrl?: string | null;
     profileThumbUrl?: string | null;
     characterName?: string | null;
+    originalCharacterName?: string | null;
   }>;
   famousLines?: Array<{
     lineId: number;
@@ -333,11 +336,11 @@ export async function fetchVideoConnections(contentId: number, kind: 'related' |
   return { ...result, content: result.content.map(item => kind === 'related' ? mapVideoToContent(item as VideoSummaryResponse) : mapSongToContent(item as SongResponse)) };
 }
 
-export type ActorProfile = { actorId: number; name: string; profileUrl: string | null; profileThumbUrl?: string | null; filmographyCount: number };
-export type FilmographyItem = { contentId: number; title: string; posterUrl: string | null; posterThumbUrl?: string | null; releaseDate: string | null; type: string; characterName: string | null; voteAverage: number | null };
+export type ActorProfile = { actorId: number; name: string; originalName?: string | null; profileUrl: string | null; profileThumbUrl?: string | null; filmographyCount: number };
+export type FilmographyItem = { contentId: number; title: string; posterUrl: string | null; posterThumbUrl?: string | null; releaseDate: string | null; type: string; characterName: string | null; originalCharacterName?: string | null; voteAverage: number | null };
 export async function fetchActor(actorId: number, language: Language, signal: AbortSignal) {
   const [profile, films] = await Promise.all([
-    request<ActorProfile>(`/api/v1/actors/${actorId}`, signal),
+    request<ActorProfile>(`/api/v1/actors/${actorId}?${new URLSearchParams({ lang: language })}`, signal),
     request<FilmographyItem[]>(`/api/v1/actors/${actorId}/filmography?lang=${language}`, signal),
   ]);
   return { profile, films };
@@ -602,7 +605,8 @@ function mapVideoToContent(video: VideoSummaryResponse | VideoDetailResponse): V
     relationType: video.relationType,
     sharedActors: video.sharedActors,
     year: toYear(video.releaseDate),
-    director: video.director?.trim() || '',
+    director: video.director?.trim() || video.originalDirector?.trim() || '',
+    originalDirector: video.originalDirector?.trim() || undefined,
     cast: (detail.actors ?? []).map(mapActorToPerson),
     ostIds: (detail.osts ?? []).map(song => `song-${song.songId}`),
     connectedItems: [
@@ -617,8 +621,10 @@ function mapVideoToContent(video: VideoSummaryResponse | VideoDetailResponse): V
 function mapActorToPerson(actor: NonNullable<VideoDetailResponse['actors']>[number]): Person {
   return {
     actorId: actor.actorId,
-    name: actor.name,
-    role: actor.characterName || 'Cast',
+    name: actor.name || actor.originalName || '',
+    originalName: actor.originalName || undefined,
+    role: actor.characterName || actor.originalCharacterName || 'Cast',
+    originalCharacterName: actor.originalCharacterName || undefined,
     imageUrl: actor.profileThumbUrl || actor.profileUrl || FALLBACK_IMAGE_URL,
   };
 }

@@ -20,6 +20,7 @@ export type VideoContent = BaseContent & {
   kind: 'movie' | 'drama';
   year: number;
   director: string;
+  originalDirector?: string;
   cast: Person[];
   ostIds: string[];
   streaming: string[];
@@ -36,7 +37,7 @@ export type VideoContent = BaseContent & {
   ostCount?: number;
   relatedCount?: number;
   relationType?: string;
-  sharedActors?: Array<{ actorId: number; name: string }>;
+  sharedActors?: Array<{ actorId: number; name: string; originalName?: string | null }>;
 };
 
 export type SongContent = BaseContent & {
@@ -90,7 +91,9 @@ export type FoodInfo = Nutrition & { resolvedLanguage?: string; nameKo?: string;
 export type Person = {
   actorId?: number;
   name: string;
+  originalName?: string;
   role: string;
+  originalCharacterName?: string;
   imageUrl: string;
 };
 
