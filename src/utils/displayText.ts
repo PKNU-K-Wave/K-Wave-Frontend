@@ -3,7 +3,7 @@ import { decodeHTML } from 'entities';
 
 const blocks = new Set(['p', 'div', 'section', 'article', 'header', 'footer', 'blockquote', 'li', 'ul', 'ol', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'pre', 'hr']);
 const hidden = new Set(['script', 'style', 'iframe', 'object', 'embed', 'template', 'head', 'noscript']);
-const textFields = new Set(['title', 'name', 'originalName', 'nameKo', 'nameRomanized', 'categoryName', 'subtitle', 'description', 'summary', 'culturalBackground', 'lineText', 'biography', 'character', 'characterName', 'role', 'director', 'artistName', 'featuring', 'fandomName', 'fandomCulture', 'agency', 'ingredients', 'taste', 'howToEat', 'tip', 'imageAuthor', 'imageLicense', 'cookTime', 'difficulty', 'album', 'artist', 'text', 'relationReason', 'reason', 'line', 'knownFor']);
+const textFields = new Set(['title', 'name', 'originalName', 'nameKo', 'nameRomanized', 'categoryName', 'subtitle', 'description', 'summary', 'culturalBackground', 'lineText', 'biography', 'character', 'characterName', 'originalCharacterName', 'originalDirector', 'role', 'director', 'artistName', 'featuring', 'fandomName', 'fandomCulture', 'agency', 'ingredients', 'taste', 'howToEat', 'tip', 'imageAuthor', 'imageLicense', 'cookTime', 'difficulty', 'album', 'artist', 'text', 'relationReason', 'reason', 'line', 'knownFor']);
 const textArrays = new Set(['tags', 'genres', 'famousLines', 'ingredients', 'steps', 'reasons']);
 
 // Parse as text, never as a live DOM or HTML rendered by React.
