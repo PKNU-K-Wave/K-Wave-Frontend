@@ -57,6 +57,22 @@ export function getCategoryKinds(categoryValue: string): ContentKind[] {
   return [];
 }
 
+export function selectPreferenceCategory(preference: RecommendationPreference, categoryValue: string): RecommendationPreference {
+  const kinds = getCategoryKinds(categoryValue);
+  if (!kinds.length) return preference;
+  if (preference.categories.length && preference.categories.every(kind => kinds.includes(kind))) return preference;
+  return { categories: [...kinds], tags: [] };
+}
+
+export function normalizePreferenceCategory(preference: RecommendationPreference): RecommendationPreference {
+  const first = preference.categories[0];
+  if (!first) return { categories: [], tags: [] };
+  const group = preferenceOptions.categories.find(option => option.kinds.includes(first));
+  if (!group) return { categories: [], tags: [] };
+  const categories = preference.categories.filter(kind => group.kinds.includes(kind));
+  return categories.length === preference.categories.length ? preference : { categories, tags: [] };
+}
+
 export function getAvailableTags(categories: ContentKind[]): string[] {
   const selectedCategoryValues = preferenceOptions.categories
     .filter((category) => category.kinds.some((kind) => categories.includes(kind)))
