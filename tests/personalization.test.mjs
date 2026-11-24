@@ -74,6 +74,25 @@ test('personalized song opens exact content match, not another song sharing its 
   assert.ok(detail.tags.includes('K-POP'));
 });
 
+test('all personal recommendation categories use the authenticated account and preserve server order', async t => {
+  const seen = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const u = new URL(url);
+    assert.equal(u.pathname, '/api/v1/recommendations/me');
+    assert.equal(options.headers.get('Authorization'), 'Bearer account-token');
+    assert.equal(u.searchParams.has('userId'), false);
+    assert.equal(u.searchParams.get('lang'), 'en');
+    const type = u.searchParams.get('type');
+    seen.push(type);
+    return ok(page([19, 3].map(contentId => ({ contentId, type, title: String(contentId), reason: 'TASTE', genres: [] }))));
+  });
+  for (const type of ['movie', 'drama', 'song', 'artist']) {
+    const picks = await api.fetchPersonalRecommendations(type, 'en', 'account-token', signal);
+    assert.deepEqual(picks.map(pick => pick.contentId), [19, 3]);
+  }
+  assert.deepEqual(seen, ['movie', 'drama', 'song', 'artist']);
+});
+
 test('artist displays generationName separately from the filter key', async t => {
   t.mock.method(globalThis, 'fetch', async () => ok(page([{ artistId: 1, contentId: 2, name: 'Group', isGroup: true, generation: '5세대', generationName: '第5世代' }])));
   const result = await api.fetchKPopPage('artists', 0, signal, { sort: 'popularity', language: 'ja' });
