@@ -3,6 +3,7 @@ import type { Language } from '../types/content';
 
 export const UIContext = createContext<Language>('en');
 const translations: Record<string, [string, string]> = {
+  'Some details could not be loaded.': ['部分详情未能加载。', '一部の詳細を読み込めませんでした。'],
   'Rising': ['热度上升', '急上昇'],
   'News article': ['新闻报道', 'ニュース記事'], 'Song': ['歌曲', '楽曲'], 'Video': ['影视', '映像作品'],
   'Hot now': ['正在流行', 'いま話題'], 'Cooling down': ['热度下降', '落ち着き中'], 'Past trends': ['往日流行', '過去の流行'],
